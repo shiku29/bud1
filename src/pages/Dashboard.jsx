@@ -78,28 +78,78 @@ const Dashboard = () => {
         "Why are my sales down?",
         "Best pricing for my silk sarees?"
     ];
+    
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSendMessage = () => {
-        if (chatInput.trim()) {
-            const newMessage = {
-                id: chatMessages.length + 1,
-                type: 'user',
-                content: chatInput,
+    const handleSendMessage = async () => {
+        // Prevent sending empty messages or sending while AI is thinking
+        if (!chatInput.trim() || isLoading) return;
+
+        const newMessage = {
+            id: Date.now(),
+            type: 'user',
+            content: chatInput,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        const currentChatInput = chatInput;
+        setChatInput('');
+        
+        // Add user message to the UI and set loading state to true
+        setChatMessages(prev => [...prev, newMessage]);
+        setIsLoading(true);
+
+        // --- This is the new Backend API Integration part ---
+        try {
+            // Prepare the chat history for the backend
+            const historyForBackend = chatMessages.slice(-5).map(msg => ({
+                role: msg.type === 'bot' ? 'model' : 'user',
+                parts: [{ text: msg.content }]
+            }));
+
+            const payload = {
+                history: historyForBackend,
+                current_query: currentChatInput
+            };
+            
+            // Your backend server URL
+            const backendUrl = 'http://localhost:8000/api/chat';
+
+            const response = await fetch(backendUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `API call failed`);
+            }
+
+            const result = await response.json();
+            
+            // Create the AI response message
+            const aiResponse = {
+                id: Date.now() + 1,
+                type: 'bot',
+                content: result.reply,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
-            setChatMessages([...chatMessages, newMessage]);
-            setChatInput('');
+            setChatMessages(prev => [...prev, aiResponse]);
 
-
-            setTimeout(() => {
-                const aiResponse = {
-                    id: chatMessages.length + 2,
-                    type: 'bot',
-                    content: 'I understand your query. Let me analyze your data and provide personalized recommendations...',
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-                setChatMessages(prev => [...prev, aiResponse]);
-            }, 1000);
+        } catch (error) {
+            console.error("Error fetching AI response from backend:", error);
+            // Create an error message to show in the chat
+            const errorResponse = {
+                id: Date.now() + 1,
+                type: 'bot',
+                content: `Oops! Something went wrong. ${error.message}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setChatMessages(prev => [...prev, errorResponse]);
+        } finally {
+            // Set loading state back to false
+            setIsLoading(false);
         }
     };
 
