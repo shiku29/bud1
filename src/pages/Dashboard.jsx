@@ -25,6 +25,11 @@ import {
     Target,
     Zap
 } from 'lucide-react';
+import InventoryPlanner from './InventoryPlanner';
+import ProductListingGenerator from './ProductListingGenerator';
+import TrendsInsightsPage from './TrendsInsightsPage';
+import OrdersReturnsPage from './OrdersReturnsPage';
+import Profile from './profile';
 
 const Dashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -78,7 +83,7 @@ const Dashboard = () => {
         "Why are my sales down?",
         "Best pricing for my silk sarees?"
     ];
-    
+
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSendMessage = async () => {
@@ -91,10 +96,10 @@ const Dashboard = () => {
             content: chatInput,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
-        
+
         const currentChatInput = chatInput;
         setChatInput('');
-        
+
         // Add user message to the UI and set loading state to true
         setChatMessages(prev => [...prev, newMessage]);
         setIsLoading(true);
@@ -111,7 +116,7 @@ const Dashboard = () => {
                 history: historyForBackend,
                 current_query: currentChatInput
             };
-            
+
             // Your backend server URL
             const backendUrl = 'http://localhost:8000/api/chat';
 
@@ -127,7 +132,7 @@ const Dashboard = () => {
             }
 
             const result = await response.json();
-            
+
             // Create the AI response message
             const aiResponse = {
                 id: Date.now() + 1,
@@ -153,9 +158,12 @@ const Dashboard = () => {
         }
     };
 
+    const handleAskAI = () => {
+        setActiveTab('ai-chat');
+    };
+
     const renderDashboard = () => (
         <div className="p-6 space-y-6">
-
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-100">
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">Good Morning, Rani Devi 👋</h2>
                 <p className="text-gray-600 mb-4">Ready to boost your sales today?</p>
@@ -166,7 +174,10 @@ const Dashboard = () => {
                             <p className="font-semibold text-gray-800">Saathi AI Suggestion</p>
                             <p className="text-gray-600">"Want help planning for the festive season?" 💬</p>
                         </div>
-                        <button className="ml-auto bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                        <button
+                            className="ml-auto bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                            onClick={handleAskAI}
+                        >
                             Ask AI
                         </button>
                     </div>
@@ -209,6 +220,225 @@ const Dashboard = () => {
                 </div>
             </div>
 
+            {/* Inventory Overview */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Product Details */}
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800">PRODUCT DETAILS</h3>
+                        <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">This Month</span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-600">Low Stock Items</span>
+                                <span className="text-lg font-semibold text-red-600">9</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-600">All Item Groups</span>
+                                <span className="text-lg font-semibold text-gray-800">2</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-600">All Items</span>
+                                <span className="text-lg font-semibold text-gray-800">21</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-600">Unconfirmed Items</span>
+                                <span className="text-lg font-semibold text-gray-800">0</span>
+                            </div>
+                        </div>
+                        {/* 
+                        <div className="flex items-center justify-center">
+                            <div className="relative w-24 h-24">
+                                <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center">
+                                    <div className="w-16 h-16 rounded-full bg-green-400 flex items-center justify-center">
+                                        <span className="text-white font-semibold text-sm">100%</span>
+                                    </div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-xs text-gray-600 mt-8">Active Items</span>
+                                </div>
+                            </div>
+                        </div>
+                        */}
+                    </div>
+                </div>
+
+                {/* Top Selling Items */}
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800">TOP SELLING ITEMS</h3>
+                        <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">This Month</span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-gray-100 rounded-lg mb-2 flex items-center justify-center mx-auto">
+                                <Package className="w-6 h-6 text-gray-400" />
+                            </div>
+                            <p className="text-xs text-gray-600 mb-1">silk saree</p>
+                            <p className="text-sm font-semibold text-gray-800">52 <span className="text-xs text-gray-500">pcs</span></p>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-blue-100 rounded-lg mb-2 flex items-center justify-center mx-auto">
+                                <div className="w-6 h-6 bg-blue-400 rounded"></div>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-1">Multi-color Bedsheet</p>
+                            <p className="text-sm font-semibold text-gray-800">41 <span className="text-xs text-gray-500">pcs</span></p>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-gray-800 rounded-lg mb-2 flex items-center justify-center mx-auto">
+                                <div className="w-6 h-6 bg-gray-600 rounded"></div>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-1">Cotton kurti</p>
+                            <p className="text-sm font-semibold text-gray-800">13 <span className="text-xs text-gray-500">pcs</span></p>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-teal-100 rounded-lg mb-2 flex items-center justify-center mx-auto">
+                                <div className="w-6 h-6 bg-teal-400 rounded"></div>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-1">Dupatta</p>
+                            <p className="text-sm font-semibold text-gray-800">14 <span className="text-xs text-gray-500">pcs</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Purchase Order & Sales Order */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">PURCHASE ORDER</h3>
+                        <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">This Month</span>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-800">PO-2024-001</p>
+                                    <p className="text-xs text-gray-600">Silk Saree Collection</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800">₹45,000</p>
+                                <p className="text-xs text-green-600">Delivered</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-800">PO-2024-002</p>
+                                    <p className="text-xs text-gray-600">Traditional Jewelry</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800">₹28,500</p>
+                                <p className="text-xs text-orange-600">Pending</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-800">PO-2024-003</p>
+                                    <p className="text-xs text-gray-600">Festival Decorations</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800">₹12,200</p>
+                                <p className="text-xs text-blue-600">Processing</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Total Orders: 3</span>
+                            <span className="font-semibold text-gray-800">₹85,700</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">SALES ORDER</h3>
+                        <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">This Month</span>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-800">SO-2024-015</p>
+                                    <p className="text-xs text-gray-600">Banarasi Silk Saree</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800">₹8,500</p>
+                                <p className="text-xs text-green-600">Completed</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-800">SO-2024-016</p>
+                                    <p className="text-xs text-gray-600">Gold Plated Earrings</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800">₹2,200</p>
+                                <p className="text-xs text-blue-600">Shipped</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-800">SO-2024-017</p>
+                                    <p className="text-xs text-gray-600">Rakhi Gift Set</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800">₹1,800</p>
+                                <p className="text-xs text-yellow-600">Confirmed</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-pink-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-800">SO-2024-018</p>
+                                    <p className="text-xs text-gray-600">Traditional Kurta Set</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-800">₹3,500</p>
+                                <p className="text-xs text-pink-600">New</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Total Orders: 4</span>
+                            <span className="font-semibold text-gray-800">₹16,000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Recent Activity */}
             <div className="bg-white rounded-lg p-6 border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
@@ -236,13 +466,16 @@ const Dashboard = () => {
     const renderAIChat = () => (
         <div className="flex h-full">
             {/* Chat History Sidebar */}
-            <div className="w-80 bg-white border-r border-gray-200 p-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Chat History</h3>
+            <div className="w-80 bg-[#0f172a] border-r border-gray-200 p-4"> {/* Changed to darkest blue */}
+                <h3 className="text-lg font-semibold text-white mb-4">Chat History</h3>
                 <div className="space-y-2">
                     {chatHistory.map((chat) => (
-                        <div key={chat.id} className="p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                            <h4 className="font-medium text-gray-800 text-sm">{chat.title}</h4>
-                            <p className="text-xs text-gray-600 mt-1">{chat.preview}</p>
+                        <div
+                            key={chat.id}
+                            className="p-3 rounded-lg border border-gray-700 hover:bg-[#1e293b] cursor-pointer bg-[#1e293b] text-gray-100"
+                        >
+                            <h4 className="font-medium text-gray-100 text-sm">{chat.title}</h4>
+                            <p className="text-xs text-gray-400 mt-1">{chat.preview}</p>
                             <span className="text-xs text-gray-500 mt-2 block">{chat.time}</span>
                         </div>
                     ))}
@@ -264,17 +497,24 @@ const Dashboard = () => {
                             </div>
                         </div>
                     ))}
+                    {isLoading && (
+                        <div className="flex justify-start">
+                            <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-gray-100 text-gray-800 animate-pulse">
+                                <p className="text-sm">Saathi AI is typing…</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
 
                 <div className="px-6 py-4 border-t border-gray-200">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Smart Suggestions</h4>
+                    <h4 className="text-sm font-medium text-gray-400 mb-3">Smart Suggestions</h4>
                     <div className="flex flex-wrap gap-2">
                         {chatSuggestions.map((suggestion, index) => (
                             <button
                                 key={index}
                                 onClick={() => setChatInput(suggestion)}
-                                className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm hover:bg-blue-100 transition-colors"
+                                className="px-3 py-1 bg-white text-blue-700 rounded-full text-sm hover:bg-blue-50 transition-colors"
                             >
                                 {suggestion}
                             </button>
@@ -320,6 +560,16 @@ const Dashboard = () => {
                 return renderDashboard();
             case 'ai-chat':
                 return renderAIChat();
+            case 'inventory':
+                return <InventoryPlanner />;
+            case 'listing':
+                return <ProductListingGenerator />;
+            case 'trends':
+                return <TrendsInsightsPage />;
+            case 'orders':
+                return <OrdersReturnsPage />;
+            case 'profile':
+                return <Profile />;
             default:
                 return (
                     <div className="p-6 text-center">
@@ -335,21 +585,20 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="h-screen bg-gray-50 flex">
+        <div className="h-screen bg-[#1e293b] flex"> {/* Changed to dark blue (slate-800) */}
             {/* Left Sidebar */}
-            <div className="w-64 bg-white border-r border-gray-200 sticky top-0 h-full overflow-y-auto">
+            <div className="w-64 bg-gray-300 border-r border-gray-200 sticky top-0 h-full overflow-y-auto"> {/* Changed from bg-white to bg-gray-100 */}
                 <div className="p-4 border-b border-gray-200">
-                    <h1 className="text-xl font-bold text-gray-800">Buddy</h1>
+                    <h1 className="text-xl font-bold text-gray-800">SAATHI</h1>
                     <p className="text-sm text-gray-600">AI Copilot</p>
                 </div>
-
                 <nav className="p-4 space-y-2">
                     {sidebarItems.map((item) => (
                         <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${activeTab === item.id
-                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                 : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
@@ -360,48 +609,43 @@ const Dashboard = () => {
                 </nav>
             </div>
 
-
             <div className="flex-1 flex flex-col">
-
-                <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+                <div className="bg-gray-100 border-b border-gray-200 p-4 flex items-center justify-between"> {/* Changed from bg-white to bg-gray-100 */}
                     <div className="flex-1 max-w-md">
                         <div className="relative">
                             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                             <input
                                 type="text"
                                 placeholder="Search products, orders, insights..."
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-[#F4F6F8] text-gray-700"
                             />
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        {/* Notificat */}
+                        {/* Notifications */}
                         <div className="relative">
                             <button className="p-2 hover:bg-gray-100 rounded-lg relative">
                                 <Bell className="w-5 h-5 text-gray-600" />
-                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                <span className="absolute -top-1 -right-1 bg-indigo-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                                     {notifications.length}
                                 </span>
                             </button>
                         </div>
-
-
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                            <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
                                 <span className="text-white font-semibold text-sm">R</span>
                             </div>
                             <div>
                                 <p className="font-medium text-gray-800 text-sm">Rani Devi</p>
-                                <p className="text-xs text-gray-600">Seller</p>
+                                <p className="text-xs text-gray-400">Seller</p>
                             </div>
                             <ChevronDown className="w-4 h-4 text-gray-600" />
                         </div>
                     </div>
                 </div>
 
-
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto bg-[#1e293b]">
                     {renderContent()}
                 </div>
             </div>
