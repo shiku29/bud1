@@ -31,6 +31,8 @@ import TrendsInsightsPage from './TrendsInsightsPage';
 import OrdersReturnsPage from './OrdersReturnsPage';
 import Profile from './profile';
 
+const backendURL = import.meta.env.VITE_BACKEND_URL;
+
 const Dashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [chatMessages, setChatMessages] = useState([
