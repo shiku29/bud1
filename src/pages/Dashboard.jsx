@@ -114,7 +114,7 @@ const Dashboard = () => {
                 current_query: currentChatInput
             };
 
-            // Use backendURL from env
+            // Connect to backend using backendURL from .env
             const response = await fetch(`${backendURL}api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
