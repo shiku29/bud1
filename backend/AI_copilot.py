@@ -52,8 +52,11 @@ class ChatResponse(BaseModel):
     reply: str
 
 # --- API Endpoint ---
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat_with_copilot_ai(request: ChatRequest):
+@app.api_route("/api/chat", methods=["POST", "HEAD"], response_model=ChatResponse)
+async def chat_with_copilot_ai(request: ChatRequest = None):
+    if request is None:
+        # For HEAD requests, just return an empty response with 200 OK
+        return {}
 
     if not model:
         raise HTTPException(status_code=500, detail="OpenAI API model is not configured. Check API key.")
