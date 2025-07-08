@@ -29,7 +29,7 @@ import InventoryPlanner from './InventoryPlanner';
 import ProductListingGenerator from './ProductListingGenerator';
 import TrendsInsightsPage from './TrendsInsightsPage';
 import OrdersReturnsPage from './OrdersReturnsPage';
-import Profile from './profile';
+import Profile from './Profile';
 
 const backendURL = import.meta.env.VITE_BACKEND_URL;
 
