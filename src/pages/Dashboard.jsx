@@ -89,7 +89,6 @@ const Dashboard = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSendMessage = async () => {
-        // Prevent sending empty messages or sending while AI is thinking
         if (!chatInput.trim() || isLoading) return;
 
         const newMessage = {
@@ -101,14 +100,10 @@ const Dashboard = () => {
 
         const currentChatInput = chatInput;
         setChatInput('');
-
-        // Add user message to the UI and set loading state to true
         setChatMessages(prev => [...prev, newMessage]);
         setIsLoading(true);
 
-        // --- This is the new Backend API Integration part ---
         try {
-            // Prepare the chat history for the backend
             const historyForBackend = chatMessages.slice(-5).map(msg => ({
                 role: msg.type === 'bot' ? 'model' : 'user',
                 parts: [{ text: msg.content }]
@@ -119,10 +114,8 @@ const Dashboard = () => {
                 current_query: currentChatInput
             };
 
-            // Your backend server URL
-            const backendUrl = 'http://localhost:8000/api/chat';
-
-            const response = await fetch(backendUrl, {
+            // Use backendURL from env
+            const response = await fetch(`${backendURL}api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -135,7 +128,6 @@ const Dashboard = () => {
 
             const result = await response.json();
 
-            // Create the AI response message
             const aiResponse = {
                 id: Date.now() + 1,
                 type: 'bot',
@@ -146,7 +138,6 @@ const Dashboard = () => {
 
         } catch (error) {
             console.error("Error fetching AI response from backend:", error);
-            // Create an error message to show in the chat
             const errorResponse = {
                 id: Date.now() + 1,
                 type: 'bot',
@@ -155,7 +146,6 @@ const Dashboard = () => {
             };
             setChatMessages(prev => [...prev, errorResponse]);
         } finally {
-            // Set loading state back to false
             setIsLoading(false);
         }
     };
