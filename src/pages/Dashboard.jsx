@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Home,
     Bot,
@@ -30,8 +30,19 @@ import ProductListingGenerator from './ProductListingGenerator';
 import TrendsInsightsPage from './TrendsInsightsPage';
 import OrdersReturnsPage from './OrdersReturnsPage';
 import Profile from './Profile';
+import Products from "./Products";
+import AddProduct from "./AddProduct";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../auth/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { databases } from "../appwrite/client"; // Add this import at the top
+// If using Appwrite v10+, also import Query: import { Query } from "appwrite";
+
+
 
 const backendURL = import.meta.env.VITE_BACKEND_URL;
+const APPWRITE_DB_ID = import.meta.env.VITE_APPWRITE_DB_ID;
+const APPWRITE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
 
 const Dashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -46,6 +57,8 @@ const Dashboard = () => {
         { id: 2, text: 'Your silk saree listing got 50 views today', type: 'success', time: '4 hours ago' },
         { id: 3, text: 'Low stock alert: Traditional earrings', type: 'warning', time: '1 day ago' }
     ]);
+    const [user, setUser] = useState(null);
+    const [products, setProducts] = useState([]);
 
     const sidebarItems = [
         { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -68,7 +81,7 @@ const Dashboard = () => {
     const quickActions = [
         { label: 'Add Product', icon: Plus, color: 'bg-blue-500' },
         { label: 'View Local Trends', icon: TrendingUp, color: 'bg-green-500' },
-        { label: 'Ask AI a Question', icon: MessageSquare, color: 'bg-purple-500' }
+        { label: 'View your products', icon: MessageSquare, color: 'bg-purple-500' }
     ];
 
     const chatHistory = [
@@ -87,6 +100,78 @@ const Dashboard = () => {
     ];
 
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        // REMOVE this block entirely if you are not using Firebase Auth
+        // const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        //     setUser(currentUser);
+        //     if (!currentUser) setProducts([]);
+        // });
+        // return () => unsubscribe();
+    }, []);
+
+    // useEffect(() => {
+    //     const getUser = async () => {
+    //         const { data: { user } } = await supabase.auth.getUser();
+    //         setUser(user);
+    //     };
+    //     getUser();
+
+    //     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    //         setUser(session?.user ?? null);
+    //     });
+
+    //     return () => {
+    //         listener?.subscription.unsubscribe();
+    //     };
+    // }, []);
+
+    // Firebase Auth
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            if (!currentUser) setProducts([]);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Fetch products for the logged-in user
+    const fetchUserProducts = async (currentUser) => {
+        if (!currentUser) {
+            setProducts([]);
+            return;
+        }
+        try {
+            const res = await databases.listDocuments(
+                APPWRITE_DB_ID, // from .env
+                APPWRITE_COLLECTION_ID // from .env
+                // For Appwrite v10+, use: [Query.equal('user_id', currentUser.uid)]
+            );
+            // For Appwrite v9, filter manually:
+            const userProducts = res.documents.filter(doc => doc.user_id === currentUser.uid);
+            setProducts(userProducts);
+        } catch (err) {
+            setProducts([]);
+        }
+    };
+
+    // Fetch products when user logs in
+    useEffect(() => {
+        if (user) {
+            fetchUserProducts(user);
+        } else {
+            setProducts([]);
+        }
+    }, [user]);
+
+    // Fetch products when switching to "products" or "profile" tab
+    useEffect(() => {
+        if ((activeTab === "products" || activeTab === "profile") && user) {
+            fetchUserProducts(user);
+        }
+    }, [activeTab, user]);
 
     const handleSendMessage = async () => {
         if (!chatInput.trim() || isLoading) return;
@@ -115,7 +200,7 @@ const Dashboard = () => {
             };
 
             // Connect to backend using backendURL from .env
-            const response = await fetch(`${backendURL}api/chat`, {
+            const response = await fetch(`${backendURL}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -154,10 +239,35 @@ const Dashboard = () => {
         setActiveTab('ai-chat');
     };
 
+    const getUserDisplayName = (user) => {
+        if (!user) return " ";
+
+        if (user.displayName) return user.displayName.split(" ")[0];
+        if (user.email) return user.email.split("@")[0];
+        return "User";
+    };
+
+    // Update quickActions to handle Add Product navigation
+    const handleQuickAction = (actionLabel) => {
+        if (actionLabel === "Add Product") {
+            setActiveTab("add-product");
+        } else if (actionLabel === "View your products") {
+            navigate("/products"); // <-- open new page
+        }
+        // You can handle other quick actions here if needed
+    };
+
+    // Pass this to AddProduct
+    const handleAddProduct = (product) => {
+        setProducts(prev => [...prev, product]);
+    };
+
     const renderDashboard = () => (
         <div className="p-6 space-y-6">
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-100">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Good Morning, Rani Devi 👋</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                    Good Morning, {getUserDisplayName(user)} 👋
+                </h2>
                 <p className="text-gray-600 mb-4">Ready to boost your sales today?</p>
                 <div className="bg-white rounded-lg p-4 border border-blue-200">
                     <div className="flex items-center gap-3">
@@ -204,6 +314,7 @@ const Dashboard = () => {
                         <button
                             key={index}
                             className={`${action.color} text-white p-4 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-3`}
+                            onClick={() => handleQuickAction(action.label)}
                         >
                             <action.icon className="w-5 h-5" />
                             <span className="font-medium">{action.label}</span>
@@ -561,7 +672,19 @@ const Dashboard = () => {
             case 'orders':
                 return <OrdersReturnsPage />;
             case 'profile':
-                return <Profile />;
+                return user ? <Profile products={products} /> : <div className="p-8 text-center text-gray-500">Please login to view your profile.</div>;
+            case 'products':
+                return user ? <Products products={products} /> : <div className="p-8 text-center text-gray-500">Please login to view your products.</div>;
+            case 'add-product':
+                return user ? (
+                    <AddProduct
+                        onAddProduct={handleAddProduct}
+                        user={user}
+                        setProducts={setProducts}
+                    />
+                ) : (
+                    <div className="p-8 text-center text-gray-500">Please login to add products.</div>
+                );
             default:
                 return (
                     <div className="p-6 text-center">
@@ -577,12 +700,37 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="h-screen bg-[#1e293b] flex"> {/* Changed to dark blue (slate-800) */}
+        <div className="h-screen bg-[#1e293b] flex">
             {/* Left Sidebar */}
-            <div className="w-64 bg-gray-300 border-r border-gray-200 sticky top-0 h-full overflow-y-auto"> {/* Changed from bg-white to bg-gray-100 */}
+            <div className="w-64 bg-gray-300 border-r border-gray-200 sticky top-0 h-full overflow-y-auto">
                 <div className="p-4 border-b border-gray-200">
                     <h1 className="text-xl font-bold text-gray-800">SAATHI</h1>
                     <p className="text-sm text-gray-600">AI Copilot</p>
+                    {/* Show Login button if not logged in, else show user info and logout */}
+                    {!user ? (
+                        <button
+                            className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                            onClick={() => navigate("/login")}
+                        >
+                            Login
+                        </button>
+                    ) : (
+                        <div className="mt-4 flex flex-col items-center">
+                            <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                                {user.email[0].toUpperCase()}
+                            </div>
+                            <div className="mt-2 text-gray-800 text-sm font-medium">{user.email}</div>
+                            <button
+                                className="mt-2 w-full bg-red-500 text-white py-1 rounded hover:bg-red-600 transition-colors"
+                                onClick={async () => {
+                                    await signOut(auth); // <-- Use Firebase signOut
+                                    setUser(null);
+                                }}
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <nav className="p-4 space-y-2">
                     {sidebarItems.map((item) => (
@@ -602,41 +750,7 @@ const Dashboard = () => {
             </div>
 
             <div className="flex-1 flex flex-col">
-                <div className="bg-gray-100 border-b border-gray-200 p-4 flex items-center justify-between"> {/* Changed from bg-white to bg-gray-100 */}
-                    <div className="flex-1 max-w-md">
-                        <div className="relative">
-                            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                            <input
-                                type="text"
-                                placeholder="Search products, orders, insights..."
-                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-[#F4F6F8] text-gray-700"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        {/* Notifications */}
-                        <div className="relative">
-                            <button className="p-2 hover:bg-gray-100 rounded-lg relative">
-                                <Bell className="w-5 h-5 text-gray-600" />
-                                <span className="absolute -top-1 -right-1 bg-indigo-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                    {notifications.length}
-                                </span>
-                            </button>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
-                                <span className="text-white font-semibold text-sm">R</span>
-                            </div>
-                            <div>
-                                <p className="font-medium text-gray-800 text-sm">Rani Devi</p>
-                                <p className="text-xs text-gray-400">Seller</p>
-                            </div>
-                            <ChevronDown className="w-4 h-4 text-gray-600" />
-                        </div>
-                    </div>
-                </div>
-
+                {/* Top navbar removed */}
                 <div className="flex-1 overflow-y-auto bg-[#1e293b]">
                     {renderContent()}
                 </div>

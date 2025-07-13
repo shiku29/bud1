@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { User, MapPin, Store, Edit3, Trophy, Star, Target, TrendingUp, Award, Mic, Calendar, ShieldCheck, CheckCircle, Settings, Camera, Bell, Lock, HelpCircle } from 'lucide-react';
+import Products from './Products'; // Adjust the import based on your file structure
 
-const ProfileSmartScorePage = () => {
+const ProfileSmartScorePage = ({ products = [] }) => {
     const [isEditing, setIsEditing] = useState(false);
+    const [showSKUs, setShowSKUs] = useState(false);
     const [profileData, setProfileData] = useState({
         businessName: "Rani Fashion Store",
         ownerName: "Rani Devi",
@@ -412,11 +414,33 @@ const ProfileSmartScorePage = () => {
                                     <HelpCircle className="w-4 h-4 text-gray-500" />
                                     <span className="text-sm font-medium">Help & Support</span>
                                 </button>
+                                <button
+                                    className="w-full p-3 text-left rounded-lg border hover:bg-gray-50 transition-colors flex items-center gap-3"
+                                    onClick={() => setShowSKUs(true)}
+                                >
+                                    <Store className="w-4 h-4 text-gray-500" />
+                                    <span className="text-sm font-medium">View Your SKUs</span>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* SKU Products Modal */}
+            {showSKUs && (
+                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full relative">
+                        <button
+                            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                            onClick={() => setShowSKUs(false)}
+                        >
+                            Close
+                        </button>
+                        <Products products={products} />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
