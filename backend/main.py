@@ -4,6 +4,7 @@ from fastapi import FastAPI
 # Import the routers from your feature-specific files
 from chat_routes import router as chat_router
 from planner_routes import router as planner_router
+from trends_routes import router as trends_router
 from cors_config import setup_cors
 
 # --- FastAPI App Initialization ---
@@ -22,6 +23,7 @@ setup_cors(app)
 # This keeps your API URLs organized.
 app.include_router(chat_router, prefix="/api/chat", tags=["AI Chat"])
 app.include_router(planner_router, prefix="/api/planner", tags=["Inventory Planner"])
+app.include_router(trends_router, prefix="/api/trends", tags=["Trends & Insights"])
 
 # --- Root Endpoint for Health Check ---
 @app.get("/", tags=["Root"])
