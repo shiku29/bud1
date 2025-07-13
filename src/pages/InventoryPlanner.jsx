@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Calendar,
     Target,
@@ -12,221 +12,19 @@ import {
     TrendingUp,
     Clock,
     MapPin,
+    Loader,
+    ServerCrash,
     CheckCircle
 } from 'lucide-react';
 
 const InventoryPlanner = () => {
+    const [plannerData, setPlannerData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [selectedFestival, setSelectedFestival] = useState(null);
+    const backendURL = import.meta.env.VITE_BACKEND_URL;
 
-    const upcomingFestivals = [
-        {
-            id: 1,
-            name: 'Raksha Bandhan',
-            date: 'Aug 19',
-            daysLeft: 14,
-            category: 'Family',
-            color: 'bg-pink-500',
-            urgency: 'high',
-            items: ['Rakhi Sets', 'Sweets', 'Brother Gifts', 'Gift Wrapping'],
-            expectedSales: '₹45,000',
-            preparation: 'Critical - Stock Now'
-        },
-        {
-            id: 2,
-            name: 'Janmashtami',
-            date: 'Aug 26',
-            daysLeft: 21,
-            category: 'Religious',
-            color: 'bg-blue-500',
-            urgency: 'medium',
-            items: ['Krishna Items', 'Decorations', 'Prasad Boxes'],
-            expectedSales: '₹28,000',
-            preparation: 'Plan by Aug 15'
-        },
-        {
-            id: 3,
-            name: 'Ganesh Chaturthi',
-            date: 'Sep 7',
-            daysLeft: 33,
-            category: 'Religious',
-            color: 'bg-orange-500',
-            urgency: 'low',
-            items: ['Ganesh Idols', 'Modak Boxes', 'Decorations'],
-            expectedSales: '₹35,000',
-            preparation: 'Early Planning'
-        },
-        {
-            id: 4,
-            name: 'Navratri',
-            date: 'Oct 15',
-            daysLeft: 71,
-            category: 'Cultural',
-            color: 'bg-purple-500',
-            urgency: 'low',
-            items: ['Chaniya Choli', 'Dandiya Sticks', 'Accessories'],
-            expectedSales: '₹65,000',
-            preparation: 'Monitor Trends'
-        },
-        {
-            id: 5,
-            name: 'Diwali',
-            date: 'Nov 12',
-            daysLeft: 99,
-            category: 'Major Festival',
-            color: 'bg-yellow-500',
-            urgency: 'low',
-            items: ['Diyas', 'Rangoli', 'Sweets', 'Decorations'],
-            expectedSales: '₹120,000',
-            preparation: 'Long-term Planning'
-        }
-    ];
-
-    const topProductsToStock = [
-        {
-            id: 1,
-            name: 'Silk Rakhi Sets',
-            demand: 'Very High',
-            profit: '₹120',
-            units: '25-30',
-            urgency: 'high',
-            trend: '+45%',
-            stockLevel: 'Critical',
-            competitor: '₹180',
-            yourPrice: '₹150'
-        },
-        {
-            id: 2,
-            name: 'Traditional Sweets Box',
-            demand: 'High',
-            profit: '₹80',
-            units: '15-20',
-            urgency: 'high',
-            trend: '+32%',
-            stockLevel: 'Low',
-            competitor: '₹220',
-            yourPrice: '₹200'
-        },
-        {
-            id: 3,
-            name: 'Brother Gift Sets',
-            demand: 'Medium',
-            profit: '₹200',
-            units: '10-15',
-            urgency: 'medium',
-            trend: '+18%',
-            stockLevel: 'Good',
-            competitor: '₹450',
-            yourPrice: '₹399'
-        },
-        {
-            id: 4,
-            name: 'Cotton Kurta Sets',
-            demand: 'High',
-            profit: '₹150',
-            units: '20-25',
-            urgency: 'high',
-            trend: '+28%',
-            stockLevel: 'Low',
-            competitor: '₹380',
-            yourPrice: '₹350'
-        },
-        {
-            id: 5,
-            name: 'Festive Jewelry',
-            demand: 'Medium',
-            profit: '₹300',
-            units: '8-12',
-            urgency: 'medium',
-            trend: '+15%',
-            stockLevel: 'Good',
-            competitor: '₹650',
-            yourPrice: '₹599'
-        }
-    ];
-
-    const nearbyDemand = [
-        {
-            id: 1,
-            area: 'Karol Bagh',
-            distance: '2.5 km',
-            product: 'Silk Sarees',
-            demand: 'Very High',
-            shoppers: '1,200+',
-            avgSpend: '₹2,500',
-            peakHours: '6-9 PM'
-        },
-        {
-            id: 2,
-            area: 'Lajpat Nagar',
-            distance: '3.1 km',
-            product: 'Traditional Jewelry',
-            demand: 'High',
-            shoppers: '800+',
-            avgSpend: '₹1,800',
-            peakHours: '7-10 PM'
-        },
-        {
-            id: 3,
-            area: 'Chandni Chowk',
-            distance: '4.2 km',
-            product: 'Wedding Wear',
-            demand: 'High',
-            shoppers: '2,000+',
-            avgSpend: '₹3,200',
-            peakHours: '5-8 PM'
-        },
-        {
-            id: 4,
-            area: 'Connaught Place',
-            distance: '5.0 km',
-            product: 'Indo-Western',
-            demand: 'Medium',
-            shoppers: '600+',
-            avgSpend: '₹2,100',
-            peakHours: '6-9 PM'
-        }
-    ];
-
-    const avoidProducts = [
-        {
-            id: 1,
-            name: 'Heavy Winter Jackets',
-            reason: 'Seasonal Mismatch',
-            returnRate: '35%',
-            impact: 'High Loss',
-            lossAmount: '₹12,000',
-            suggestion: 'Wait until October'
-        },
-        {
-            id: 2,
-            name: 'Swimwear Collection',
-            reason: 'Low Demand',
-            returnRate: '28%',
-            impact: 'Medium Loss',
-            lossAmount: '₹8,500',
-            suggestion: 'Focus on festive wear'
-        },
-        {
-            id: 3,
-            name: 'Formal Suits (Western)',
-            reason: 'Cultural Preference',
-            returnRate: '22%',
-            impact: 'Low Loss',
-            lossAmount: '₹5,000',
-            suggestion: 'Consider Indo-Western'
-        },
-        {
-            id: 4,
-            name: 'Imported Electronics',
-            reason: 'High Return Rate',
-            returnRate: '40%',
-            impact: 'High Loss',
-            lossAmount: '₹15,000',
-            suggestion: 'Stick to textiles'
-        }
-    ];
-
-    const aiRecommendations = [
+     const aiRecommendations = [
         {
             id: 1,
             product: 'Kurti Set #A32',
@@ -274,6 +72,56 @@ const InventoryPlanner = () => {
         }
     ];
 
+    useEffect(() => {
+        const fetchPlannerData = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                // The URL points to your new backend endpoint
+                const response = await fetch(`${backendURL}/api/planner/full-report?location=Delhi`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to fetch planner data');
+                }
+                
+                const data = await response.json();
+                setPlannerData(data);
+            } catch (err) {
+                setError(err.message);
+                console.error("Failed to fetch planner data:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchPlannerData();
+    }, []);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <Loader className="w-12 h-12 text-purple-600 animate-spin mx-auto" />
+                    <h2 className="mt-4 text-xl font-semibold text-gray-700">Generating Your Inventory Plan...</h2>
+                    <p className="text-gray-500">Our AI is analyzing the latest trends for you.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center bg-red-50 p-8 rounded-lg border border-red-200">
+                    <ServerCrash className="w-12 h-12 text-red-500 mx-auto" />
+                    <h2 className="mt-4 text-xl font-semibold text-red-700">Oops! Something went wrong.</h2>
+                    <p className="text-red-600">Could not load planner data: {error}</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -307,7 +155,7 @@ const InventoryPlanner = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {upcomingFestivals.map((festival) => (
+                            {plannerData && plannerData.upcomingFestivals.map((festival) => (
                                 <div key={festival.id} className="relative">
                                     <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
                                         onClick={() => setSelectedFestival(festival.id === selectedFestival ? null : festival.id)}>
@@ -372,7 +220,7 @@ const InventoryPlanner = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {topProductsToStock.map((product) => (
+                                    {plannerData && plannerData.topProductsToStock.map((product) => (
                                         <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-3">
@@ -426,7 +274,7 @@ const InventoryPlanner = () => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {nearbyDemand.map((location) => (
+                            {plannerData && plannerData.nearbyDemand.map((location) => (
                                 <div key={location.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="font-semibold text-gray-800 text-lg">{location.area}</h3>
@@ -470,7 +318,7 @@ const InventoryPlanner = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {avoidProducts.map((product) => (
+                            {plannerData && plannerData.avoidProducts.map((product) => (
                                 <div key={product.id} className="flex items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
                                     <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                                     <div className="flex-1">

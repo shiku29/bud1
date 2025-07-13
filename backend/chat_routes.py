@@ -1,42 +1,31 @@
-# To run this backend:
-# 1. Make sure you are in your backend folder.
-# 2. Install necessary libraries: pip install langchain-openai fastapi uvicorn python-dotenv pydantic
-# 3. Run the server: uvicorn AI_copilot:app --reload
-# AI_copilot.py
-
+# chat_routes.py
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
 
 # --- LangChain Imports ---
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-
-# --- Local Imports ---
-# This is the new, modular way to handle CORS
-from cors_config import setup_cors
 
 # --- Configuration ---
 from dotenv import load_dotenv
 load_dotenv()
 
+# --- Router Initialization ---
+router = APIRouter()
+
+# --- AI Model Configuration ---
 try:
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise KeyError("OPENAI_API_KEY not found in .env file")
-    model = ChatOpenAI(model='gpt-3.5-turbo')
+        raise KeyError("GROQ_API_KEY not found in .env file")
+    model = ChatGroq(model='gemma2-9b-it')
 except Exception as e:
-    print(f"Error during OpenAI configuration: {e}")
+    print(f"Error during Groq configuration in chat: {e}")
     model = None
 
-# --- FastAPI App Initialization ---
-app = FastAPI()
-
-# --- Setup CORS using the modular function ---
-setup_cors(app)
-
-# --- Pydantic Models ---
+# --- Pydantic Models for Chat ---
 class ChatPart(BaseModel):
     text: str
 
@@ -51,15 +40,12 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
-# --- API Endpoint ---
-@app.api_route("/api/chat", methods=["POST", "HEAD"], response_model=ChatResponse)
-async def chat_with_copilot_ai(request: ChatRequest = None):
-    if request is None:
-        # For HEAD requests, just return an empty response with 200 OK
-        return {}
-
+# --- API Endpoint for Chat ---
+# Note the path is now just "/" because the prefix is handled in main.py
+@router.post("/", response_model=ChatResponse)
+async def chat_with_copilot_ai(request: ChatRequest):
     if not model:
-        raise HTTPException(status_code=500, detail="OpenAI API model is not configured. Check API key.")
+        raise HTTPException(status_code=500, detail="Groq API model is not configured.")
 
     try:
         system_prompt = """
@@ -93,6 +79,3 @@ async def chat_with_copilot_ai(request: ChatRequest = None):
         print(f"An error occurred: {e}")
         raise HTTPException(status_code=500, detail="An error occurred while processing the AI request.")
 
-@app.get("/")
-def read_root():
-    return {"message": "Meesho AI Co-pilot Backend is running!"}
