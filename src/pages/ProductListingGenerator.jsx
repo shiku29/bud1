@@ -15,6 +15,7 @@ const ProductListingGenerator = () => {
     const [selectedLanguage, setSelectedLanguage] = useState('en');
     const [copiedField, setCopiedField] = useState(null);
     const [translations, setTranslations] = useState({});
+    const backendURL = import.meta.env.VITE_BACKEND_URL;
 
     const fileInputRef = useRef(null);
 
@@ -50,114 +51,40 @@ const ProductListingGenerator = () => {
         }
     };
 
-    const generateSEOTitle = (description, category) => {
-        const keywords = description.toLowerCase().split(' ').filter(word => word.length > 3);
-        const mainKeywords = keywords.slice(0, 3).join(' ');
-        return `${mainKeywords} - Premium ${category} | Best Quality Online`;
-    };
-
-    const generateTags = (description, category) => {
-        const words = description.toLowerCase().split(' ');
-        const tags = [
-            category.toLowerCase(),
-            ...words.filter(word => word.length > 3).slice(0, 8),
-            'premium', 'quality', 'online', 'india'
-        ];
-        return [...new Set(tags)];
-    };
-
-    const generateDescription = (input, category) => {
-        const features = [
-            'Premium quality materials',
-            'Excellent craftsmanship',
-            'Fast delivery across India',
-            'Easy returns and exchanges',
-            'Customer satisfaction guaranteed'
-        ];
-
-        return `Experience the finest ${category.toLowerCase()} with our ${input}. 
-    
-Key Features:
-• ${features.join('\n• ')}
-
-Perfect for daily use and special occasions. Our products are carefully selected to ensure the highest quality standards. Order now and enjoy fast, reliable delivery to your doorstep.
-
-Why Choose Us:
-✓ Trusted by thousands of customers
-✓ Secure payment options
-✓ 24/7 customer support
-✓ Authentic products only`;
-    };
-
-    const translateContent = (text, targetLang) => {
-        // Simplified translation mapping (in real app, use Google Translate API)
-        const translations = {
-            hi: {
-                'Premium': 'प्रीमियम',
-                'Quality': 'गुणवत्ता',
-                'Best': 'सर्वश्रेष्ठ',
-                'Online': 'ऑनलाइन',
-                'Fast delivery': 'तेज़ डिलीवरी',
-                'Customer satisfaction': 'ग्राहक संतुष्टि'
-            },
-            mr: {
-                'Premium': 'प्रीमियम',
-                'Quality': 'गुणवत्ता',
-                'Best': 'सर्वोत्तम',
-                'Online': 'ऑनलाइन',
-                'Fast delivery': 'जलद वितरण',
-                'Customer satisfaction': 'ग्राहक समाधान'
-            },
-            bn: {
-                'Premium': 'প্রিমিয়াম',
-                'Quality': 'গুণমান',
-                'Best': 'সেরা',
-                'Online': 'অনলাইন',
-                'Fast delivery': 'দ্রুত ডেলিভারি',
-                'Customer satisfaction': 'গ্রাহক সন্তুষ্টি'
-            }
-        };
-
-        if (targetLang === 'en') return text;
-
-        let translated = text;
-        if (translations[targetLang]) {
-            Object.entries(translations[targetLang]).forEach(([en, local]) => {
-                translated = translated.replace(new RegExp(en, 'gi'), local);
-            });
-        }
-
-        return translated;
-    };
-
     const generateListing = async () => {
         if (!productData.description && !productData.image) return;
 
         setIsGenerating(true);
+        setGeneratedListing(null); // Clear previous listing
 
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        const formData = new FormData();
+        formData.append('description', productData.description || 'Quality product with excellent features');
+        formData.append('category', productData.category || 'General');
+        if (productData.image) {
+            formData.append('image', productData.image);
+        }
 
-        const description = productData.description || 'Quality product with excellent features';
-        const category = productData.category || 'General';
+        try {
+            const response = await fetch(`${backendURL}/api/listing`, {
+                method: 'POST',
+                body: formData,
+            });
 
-        const listing = {
-            title: generateSEOTitle(description, category),
-            description: generateDescription(description, category),
-            tags: generateTags(description, category),
-            category: category,
-            seoKeywords: [
-                'buy online',
-                'best price',
-                'premium quality',
-                'fast delivery',
-                'India',
-                category.toLowerCase()
-            ]
-        };
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            }
 
-        setGeneratedListing(listing);
-        setIsGenerating(false);
+            const listing = await response.json();
+            setGeneratedListing(listing);
+
+        } catch (error) {
+            console.error("Error generating listing:", error);
+            // Optionally, show an error message to the user
+            alert(`Failed to generate listing: ${error.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const improveListing = async () => {
@@ -165,19 +92,34 @@ Why Choose Us:
 
         setIsImproving(true);
 
-        // Simulate AI improvement
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+            const response = await fetch(`${backendURL}/api/listing/improve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: generatedListing.title,
+                    description: generatedListing.description,
+                    // Pass the full original listing to be merged on the backend
+                    original_listing: generatedListing,
+                }),
+            });
 
-        const improved = {
-            ...generatedListing,
-            title: generatedListing.title.replace('Premium', 'Ultra Premium') + ' ⭐',
-            description: generatedListing.description + '\n\n🎯 LIMITED TIME OFFER: Free shipping on orders above ₹500!',
-            tags: [...generatedListing.tags, 'bestseller', 'trending', 'new arrival'],
-            seoKeywords: [...generatedListing.seoKeywords, 'bestseller', 'trending', 'top rated']
-        };
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            }
 
-        setGeneratedListing(improved);
-        setIsImproving(false);
+            const improved = await response.json();
+            setGeneratedListing(improved);
+
+        } catch (error) {
+            console.error("Error improving listing:", error);
+            alert(`Failed to improve listing: ${error.message}`);
+        } finally {
+            setIsImproving(false);
+        }
     };
 
     const copyToClipboard = (text, field) => {
@@ -186,18 +128,45 @@ Why Choose Us:
         setTimeout(() => setCopiedField(null), 2000);
     };
 
-    const translateListing = (language) => {
-        if (!generatedListing) return;
+    const translateListing = async (language) => {
+        if (!generatedListing || language === 'en') {
+            // Clear translations if switching back to English
+            if (language === 'en') setTranslations({});
+            return;
+        }
 
-        const translated = {
-            title: translateContent(generatedListing.title, language),
-            description: translateContent(generatedListing.description, language)
-        };
+        // Use cached translation if available
+        if (translations[language]) {
+            return;
+        }
 
-        setTranslations({
-            ...translations,
-            [language]: translated
-        });
+        try {
+            const response = await fetch(`${backendURL}/api/listing/translate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: generatedListing.title,
+                    description: generatedListing.description,
+                    language: languages[language] // Send full language name
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            }
+
+            const translated = await response.json();
+
+            setTranslations({
+                ...translations,
+                [language]: translated
+            });
+
+        } catch (error) {
+            console.error("Error translating listing:", error);
+            alert(`Failed to translate listing: ${error.message}`);
+        }
     };
 
     const currentListing = translations[selectedLanguage] || generatedListing;
@@ -399,7 +368,7 @@ Why Choose Us:
                                         </button>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        {generatedListing.tags.map((tag, index) => (
+                                        {generatedListing?.tags?.map((tag, index) => (
                                             <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
                                                 {tag}
                                             </span>
@@ -419,7 +388,7 @@ Why Choose Us:
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <h3 className="font-semibold text-gray-800 mb-2">SEO Keywords</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {generatedListing.seoKeywords.map((keyword, index) => (
+                                        {generatedListing?.seoKeywords?.map((keyword, index) => (
                                             <span key={index} className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-sm">
                                                 {keyword}
                                             </span>
