@@ -4,5 +4,4 @@ langchain-groq
 langchain-core
 pydantic
 python-dotenv
-indian_festivals 
-bs4
+indian_festivals
