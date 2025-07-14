@@ -1,51 +1,80 @@
 import os
 import json
+import calendar
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
-from typing import List
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 # --- LangChain Imports ---
 from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
+
+# --- Custom Library Import ---
+from indian_festivals import IndianFestivals
 
 # --- Pydantic Models for Structured JSON Response ---
-# These models define the exact structure of the data our API will return.
+# These models are now enhanced with detailed descriptions to match the frontend component's needs.
+
 class Festival(BaseModel):
-    id: int
-    name: str
-    date: str
-    daysLeft: int
-    urgency: str
-    items: List[str]
+    id: int = Field(description="Unique identifier for the festival.")
+    name: str = Field(description="Name of the festival, e.g., 'Diwali'.")
+    date: str = Field(description="Date of the festival in 'YYYY-MM-DD' format, e.g., '2024-11-01'.")
+    daysLeft: int = Field(description="Number of days remaining until the festival from today.")
+    urgency: str = Field(description="Urgency level: 'high', 'medium', or 'low'.")
+    items: List[str] = Field(description="List of recommended product categories to stock.")
+    expectedSales: str = Field(description="The expected sales volume, e.g., '₹50,000'.")
+    preparation: str = Field(description="Current preparation status, e.g., 'Planning Phase'.")
+    color: str = Field(description="A hex color code associated with the festival for UI theming.")
 
 class RecommendedProduct(BaseModel):
-    id: int
-    name: str
-    demand: str
-    profit: str
-    units: str
-    trend: str
+    id: int = Field(description="Unique identifier for the product.")
+    name: str = Field(description="Product name, e.g., 'Silk Saree #B17'.")
+    demand: str = Field(description="Demand level: 'Very High', 'High', or 'Medium'.")
+    profit: str = Field(description="Profit per unit, e.g., '₹450'.")
+    units: str = Field(description="Recommended number of units to stock, e.g., '25-30'.")
+    trend: str = Field(description="Sales trend percentage, e.g., '+15%'.")
+    yourPrice: str = Field(description="The seller's current price for the item, e.g., '₹1200'.")
+    stockLevel: str = Field(description="Current stock level: 'Critical', 'Low', or 'Good'.")
+    urgency: str = Field(description="Urgency for action: 'high', 'medium', 'low'.")
 
 class LocalDemand(BaseModel):
-    id: int
-    area: str
-    product: str
-    demand: str
+    id: int = Field(description="Unique identifier for the location.")
+    area: str = Field(description="Name of the area, e.g., 'Koramangala'.")
+    product: str = Field(description="Product category in demand, e.g., 'Ethnic Wear'.")
+    demand: str = Field(description="Demand level: 'Very High' or 'High'.")
+    distance: str = Field(description="Distance from the seller, e.g., '5 km'.")
+    avgSpend: str = Field(description="Average customer spend in this area, formatted as a string with the Rupee symbol, e.g., '₹1,500'.")
+    shoppers: int = Field(description="Estimated number of shoppers as a raw integer without commas (e.g., 5000).")
+    peakHours: str = Field(description="Peak shopping hours, e.g., '6-8 PM'.")
 
 class AvoidProduct(BaseModel):
-    id: int
-    name: str
-    reason: str
-    suggestion: str
+    id: int = Field(description="Unique identifier for the product to avoid.")
+    name: str = Field(description="Name of the product.")
+    reason: str = Field(description="Reason to avoid, e.g., 'Seasonal Mismatch'.")
+    suggestion: str = Field(description="Suggestion for the seller, e.g., 'Wait until October'.")
+    returnRate: str = Field(description="The product's return rate, e.g., '25%'.")
+    impact: str = Field(description="The impact of this product, e.g., 'High Inventory Cost'.")
+    lossAmount: str = Field(description="Potential loss amount, e.g., '₹5,000'.")
+
+class AIRecommendation(BaseModel):
+    id: int = Field(description="Unique identifier for the recommendation.")
+    product: str = Field(description="The specific product the recommendation is for, e.g., 'Kurti Set #A32'.")
+    action: str = Field(description="The suggested action, e.g., 'Restock 50 units'.")
+    priority: str = Field(description="Priority level: 'High', 'Medium', or 'Low'.")
+    reason: str = Field(description="The reason for the recommendation, e.g., 'Festival demand spike expected'.")
+    confidence: str = Field(description="The AI's confidence level in this recommendation, e.g., '92%'.")
+    potentialRevenue: str = Field(description="The potential revenue from this action, e.g., '₹3,500'.")
 
 class PlannerResponse(BaseModel):
     upcomingFestivals: List[Festival]
     topProductsToStock: List[RecommendedProduct]
     nearbyDemand: List[LocalDemand]
     avoidProducts: List[AvoidProduct]
+    aiRecommendations: List[AIRecommendation] = Field(description="A list of specific, actionable AI recommendations.")
 
 # --- Router Initialization ---
-# We use an APIRouter to keep these planner-specific routes separate.
 router = APIRouter()
 
 # --- AI Model Configuration ---
@@ -53,65 +82,117 @@ try:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise KeyError("GROQ_API_KEY not found in .env file")
-    model = ChatGroq(model='gemma2-9b-it')
+    model = ChatGroq(model='gemma2-9b-it', model_kwargs={"response_format": {"type": "json_object"}})
 except Exception as e:
     print(f"Error during Groq configuration in planner: {e}")
     model = None
 
+# --- Helper Function to Fetch Real-Time Festival Data ---
+def get_upcoming_festivals():
+    """
+    Fetches a list of upcoming Indian festivals for the current year using the indian_festivals library.
+    """
+    try:
+        current_year = str(datetime.now().year)
+        fest_finder = IndianFestivals(current_year)
+        festivals_str = fest_finder.get_festivals_in_a_year()
+        all_festivals_by_month = json.loads(festivals_str)
+
+        today = datetime.now()
+        upcoming_festivals_list = []
+        
+        # Create a mapping from month name to month number for robust parsing
+        month_map = {name: num for num, name in enumerate(calendar.month_name) if num}
+
+        for month_name, festivals in all_festivals_by_month.items():
+            month_number = month_map.get(month_name)
+            if not month_number:
+                continue # Skip if the month name is not valid
+
+            for festival in festivals:
+                try:
+                    # The 'date' from the library is just a day number string like "1" or "13"
+                    festival_date = datetime(int(current_year), month_number, int(festival['date']))
+                    
+                    # Include only festivals from today onwards
+                    if festival_date.date() >= today.date():
+                        # Format for the prompt: "Festival Name (YYYY-MM-DD)"
+                        upcoming_festivals_list.append(f"{festival['name']} ({festival_date.strftime('%Y-%m-%d')})")
+                except (ValueError, KeyError) as e:
+                    # Some entries might be malformed or missing keys, skip them to be safe
+                    print(f"Skipping festival due to parsing error: {festival}. Error: {e}")
+                    continue
+        
+        # Return a limited number of upcoming festivals as a comma-separated string for the prompt
+        return ", ".join(upcoming_festivals_list[:15])
+    except Exception as e:
+        print(f"An error occurred in get_upcoming_festivals with indian_festivals library: {e}")
+        return "" # Return empty string on failure, so the main logic can handle it gracefully
+
+
 # --- API Endpoint for Inventory Planner ---
 @router.get("/full-report", response_model=PlannerResponse)
 async def get_full_planner_report(location: str = "Delhi"):
-    """
-    Generates a full, comprehensive report for the Inventory Planner page.
-    This single endpoint provides all the data needed for the UI.
-    """
     if not model:
         raise HTTPException(status_code=500, detail="Groq API model is not configured.")
 
-    # --- The Master AI Prompt ---
-    # We ask the AI to generate everything in one go for efficiency.
-    master_prompt = f"""
-    You are an expert Indian retail and inventory planning AI for Meesho sellers.
-    The seller is located in: {location}.
-
-    Your task is to generate a complete inventory plan. Respond with ONLY a single, valid JSON object. Do not add any text before or after the JSON.
-    The JSON object must conform to this exact structure:
-    {{
-      "upcomingFestivals": [
-        {{ "id": 1, "name": "Festival Name", "date": "Month Day", "daysLeft": integer, "urgency": "high/medium/low", "items": ["Item1", "Item2"] }}
-      ],
-      "topProductsToStock": [
-        {{ "id": 1, "name": "Product Name", "demand": "Very High/High/Medium", "profit": "₹XXX", "units": "XX-XX", "trend": "+XX%" }}
-      ],
-      "nearbyDemand": [
-        {{ "id": 1, "area": "Neighborhood Name", "product": "Product Category", "demand": "High/Medium" }}
-      ],
-      "avoidProducts": [
-        {{ "id": 1, "name": "Product to Avoid", "reason": "Reason like 'Seasonal Mismatch'", "suggestion": "Suggestion like 'Wait until October'" }}
-      ]
-    }}
-
-    Generate 4 upcoming festivals, 5 top products, 3 nearby demand areas, and 3 products to avoid. Ensure the data is realistic and relevant for a seller in {location}.
-    """
-
     try:
-        messages = [
-            SystemMessage(content="You are an AI that only responds with valid JSON."),
-            HumanMessage(content=master_prompt)
-        ]
-        
-        ai_response = model.invoke(messages)
-        
-        # The AI's response is a JSON string. We need to parse it.
-        response_json = json.loads(ai_response.content)
+        # 1. Fetch real-time festival data using the new synchronous function
+        real_festivals = get_upcoming_festivals()
+        if not real_festivals:
+            print("Warning: Could not fetch real-time festival data. The AI will generate festivals from its own knowledge.")
 
-        # Validate the JSON with our Pydantic models and return it.
-        return PlannerResponse(**response_json)
+        # 2. Set up the Pydantic Output Parser
+        parser = PydanticOutputParser(pydantic_object=PlannerResponse)
 
-    except json.JSONDecodeError:
-        print("AI did not return valid JSON.")
-        raise HTTPException(status_code=500, detail="Failed to parse AI response as JSON.")
+        # 3. Create a prompt template that now includes the real festival data
+        prompt_template = PromptTemplate(
+            template="""
+            You are an expert Indian retail and inventory planning AI for Meesho sellers.
+            The seller is located in: {location}.
+
+            Your task is to generate a complete inventory plan as a single, valid JSON object.
+            The data should be realistic and relevant for a seller in {location}.
+            
+            Here is a list of real, upcoming festivals in India: {real_festivals}
+            Please use this list as the primary source for the 'upcomingFestivals' section of your response.
+            Base the festival 'name' and 'date' fields directly on this list. The date format MUST be 'YYYY-MM-DD'.
+            If the list is empty, you can generate festivals based on your own knowledge.
+
+            Generate 4 upcoming festivals, 5 top products, 3 nearby demand areas, 3 products to avoid, and 5 AI-driven recommendations.
+
+            {format_instructions}
+            """,
+            input_variables=["location", "real_festivals"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
+
+        # 4. Create the processing chain
+        chain = prompt_template | model | parser
+        
+        # 5. Invoke the chain with the query
+        response = await chain.ainvoke({"location": location, "real_festivals": real_festivals})
+        
+        # 6. Post-process the response to fix dates and calculate daysLeft accurately
+        today = datetime.now().date()
+        for festival in response.upcomingFestivals:
+            try:
+                # The AI provides the date as 'YYYY-MM-DD'. Parse it.
+                festival_date_obj = datetime.strptime(festival.date, '%Y-%m-%d').date()
+                
+                # Recalculate daysLeft for 100% accuracy
+                festival.daysLeft = (festival_date_obj - today).days
+                
+                # Reformat the date string to be more readable for the frontend
+                festival.date = festival_date_obj.strftime('%B %d, %Y')
+            except (ValueError, TypeError):
+                # If date parsing fails, leave the AI's original values to avoid a crash.
+                print(f"Could not parse date '{festival.date}' for festival '{festival.name}'. Using original AI values.")
+                continue
+
+        return response
+
     except Exception as e:
         print(f"An error occurred in planner endpoint: {e}")
-        raise HTTPException(status_code=500, detail="An error occurred while generating the planner report.")
+        raise HTTPException(status_code=500, detail=f"An error occurred while generating the planner report: {e}")
 

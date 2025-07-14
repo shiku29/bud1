@@ -24,54 +24,6 @@ const InventoryPlanner = () => {
     const [selectedFestival, setSelectedFestival] = useState(null);
     const backendURL = import.meta.env.VITE_BACKEND_URL;
 
-     const aiRecommendations = [
-        {
-            id: 1,
-            product: 'Kurti Set #A32',
-            action: 'Restock 5 units before Aug 8',
-            priority: 'High',
-            reason: 'Festival demand spike expected',
-            confidence: '92%',
-            potentialRevenue: '₹3,500'
-        },
-        {
-            id: 2,
-            product: 'Silk Saree #B17',
-            action: 'Reduce price by 8%',
-            priority: 'Medium',
-            reason: 'Competitor analysis shows overpricing',
-            confidence: '87%',
-            potentialRevenue: '₹2,200'
-        },
-        {
-            id: 3,
-            product: 'Jewelry Set #C44',
-            action: 'Increase stock by 12 units',
-            priority: 'High',
-            reason: 'Local wedding season approaching',
-            confidence: '94%',
-            potentialRevenue: '₹8,400'
-        },
-        {
-            id: 4,
-            product: 'Cotton Dupatta #D21',
-            action: 'Maintain current stock',
-            priority: 'Low',
-            reason: 'Stable demand pattern',
-            confidence: '78%',
-            potentialRevenue: '₹1,800'
-        },
-        {
-            id: 5,
-            product: 'Handbag #E33',
-            action: 'Clear inventory - 20% off',
-            priority: 'Medium',
-            reason: 'Seasonal transition needed',
-            confidence: '85%',
-            potentialRevenue: '₹2,800'
-        }
-    ];
-
     useEffect(() => {
         const fetchPlannerData = async () => {
             setIsLoading(true);
@@ -97,6 +49,14 @@ const InventoryPlanner = () => {
 
         fetchPlannerData();
     }, []);
+
+    const { 
+        upcomingFestivals, 
+        topProductsToStock, 
+        nearbyDemand, 
+        avoidProducts,
+        aiRecommendations 
+    } = plannerData || {};
 
     if (isLoading) {
         return (
@@ -155,48 +115,42 @@ const InventoryPlanner = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {plannerData && plannerData.upcomingFestivals.map((festival) => (
-                                <div key={festival.id} className="relative">
-                                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                                        onClick={() => setSelectedFestival(festival.id === selectedFestival ? null : festival.id)}>
-                                        <div className={`w-4 h-4 rounded-full ${festival.color}`}></div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="font-semibold text-gray-800 text-lg">{festival.name}</h3>
-                                                <span className="text-sm text-gray-500">• {festival.date}</span>
-                                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${festival.urgency === 'high' ? 'bg-red-100 text-red-700' :
+                            {plannerData &&
+                                plannerData.upcomingFestivals
+                                    .slice() // Create a shallow copy to avoid mutating state
+                                    .sort((a, b) => a.daysLeft - b.daysLeft) // Sort by daysLeft ascending
+                                    .map((festival) => (
+                                        <div key={festival.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                            {/* Color Dot */}
+                                            <div style={{ backgroundColor: festival.color }} className="w-4 h-4 rounded-full flex-shrink-0"></div>
+                                            
+                                            {/* Main Info */}
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <h3 className="font-semibold text-gray-800 text-lg">{festival.name}</h3>
+                                                    <span className="text-sm text-gray-500">• {festival.date}</span>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                                        festival.urgency === 'high' ? 'bg-red-100 text-red-700' :
                                                         festival.urgency === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                            'bg-green-100 text-green-700'
+                                                        'bg-green-100 text-green-700'
                                                     }`}>
-                                                    {festival.daysLeft} days left
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                                                <span>Expected Sales: <strong className="text-green-600">{festival.expectedSales}</strong></span>
-                                                <span>Status: <strong>{festival.preparation}</strong></span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <button className="text-blue-600 hover:text-blue-800 font-medium">
-                                                Plan Stock →
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {selectedFestival === festival.id && (
-                                        <div className="mt-2 p-4 bg-white rounded-lg border border-gray-200">
-                                            <h4 className="font-medium text-gray-800 mb-2">Recommended Stock Items:</h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {festival.items.map((item, idx) => (
-                                                    <span key={idx} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm border border-blue-200">
-                                                        {item}
+                                                        {festival.daysLeft} days left
                                                     </span>
-                                                ))}
+                                                </div>
+                                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                                    <span>Expected Sales: <strong className="text-green-600">{festival.expectedSales}</strong></span>
+                                                    <span>Status: <strong className="text-gray-800">{festival.preparation}</strong></span>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Action Button */}
+                                            <div className="text-right">
+                                                <button className="text-blue-600 hover:text-blue-800 font-medium">
+                                                    Plan Stock →
+                                                </button>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+                                    ))}
                         </div>
                     </div>
 
@@ -352,7 +306,7 @@ const InventoryPlanner = () => {
                     </div>
 
                     <div className="space-y-4">
-                        {aiRecommendations.map((rec) => (
+                        {aiRecommendations && aiRecommendations.map((rec) => (
                             <div key={rec.id} className={`p-4 rounded-lg border ${rec.priority === 'High' ? 'bg-red-50 border-red-200' :
                                     rec.priority === 'Medium' ? 'bg-yellow-50 border-yellow-200' :
                                         'bg-green-50 border-green-200'
