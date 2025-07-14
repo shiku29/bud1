@@ -11,8 +11,8 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 
-# --- Custom Library Import ---
-from indian_festivals import IndianFestivals
+# --- Custom Utility Import ---
+from utils import get_upcoming_festivals_for_prompt
 
 # --- Pydantic Models for Structured JSON Response ---
 # These models are now enhanced with detailed descriptions to match the frontend component's needs.
@@ -87,48 +87,6 @@ except Exception as e:
     print(f"Error during Groq configuration in planner: {e}")
     model = None
 
-# --- Helper Function to Fetch Real-Time Festival Data ---
-def get_upcoming_festivals():
-    """
-    Fetches a list of upcoming Indian festivals for the current year using the indian_festivals library.
-    """
-    try:
-        current_year = str(datetime.now().year)
-        fest_finder = IndianFestivals(current_year)
-        festivals_str = fest_finder.get_festivals_in_a_year()
-        all_festivals_by_month = json.loads(festivals_str)
-
-        today = datetime.now()
-        upcoming_festivals_list = []
-        
-        # Create a mapping from month name to month number for robust parsing
-        month_map = {name: num for num, name in enumerate(calendar.month_name) if num}
-
-        for month_name, festivals in all_festivals_by_month.items():
-            month_number = month_map.get(month_name)
-            if not month_number:
-                continue # Skip if the month name is not valid
-
-            for festival in festivals:
-                try:
-                    # The 'date' from the library is just a day number string like "1" or "13"
-                    festival_date = datetime(int(current_year), month_number, int(festival['date']))
-                    
-                    # Include only festivals from today onwards
-                    if festival_date.date() >= today.date():
-                        # Format for the prompt: "Festival Name (YYYY-MM-DD)"
-                        upcoming_festivals_list.append(f"{festival['name']} ({festival_date.strftime('%Y-%m-%d')})")
-                except (ValueError, KeyError) as e:
-                    # Some entries might be malformed or missing keys, skip them to be safe
-                    print(f"Skipping festival due to parsing error: {festival}. Error: {e}")
-                    continue
-        
-        # Return a limited number of upcoming festivals as a comma-separated string for the prompt
-        return ", ".join(upcoming_festivals_list[:15])
-    except Exception as e:
-        print(f"An error occurred in get_upcoming_festivals with indian_festivals library: {e}")
-        return "" # Return empty string on failure, so the main logic can handle it gracefully
-
 
 # --- API Endpoint for Inventory Planner ---
 @router.get("/full-report", response_model=PlannerResponse)
@@ -137,9 +95,9 @@ async def get_full_planner_report(location: str = "Delhi"):
         raise HTTPException(status_code=500, detail="Groq API model is not configured.")
 
     try:
-        # 1. Fetch real-time festival data using the new synchronous function
-        real_festivals = get_upcoming_festivals()
-        if not real_festivals:
+        # 1. Fetch real-time festival data using the new centralized utility function
+        real_festivals = get_upcoming_festivals_for_prompt()
+        if not real_festivals or "No major festivals" in real_festivals:
             print("Warning: Could not fetch real-time festival data. The AI will generate festivals from its own knowledge.")
 
         # 2. Set up the Pydantic Output Parser

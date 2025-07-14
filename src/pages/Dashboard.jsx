@@ -11,6 +11,7 @@ import {
     Search,
     Bell,
     Plus,
+    PlusCircle, // Add PlusCircle for the new chat button
     MessageSquare,
     Mic,
     Camera,
@@ -35,23 +36,27 @@ import AddProduct from "./AddProduct";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../auth/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { databases } from "../appwrite/client"; // Add this import at the top
-// If using Appwrite v10+, also import Query: import { Query } from "appwrite";
+import { databases, ID } from "../appwrite/client"; // Add ID to import
+import { Query } from "appwrite";
 
 
 
 const backendURL = import.meta.env.VITE_BACKEND_URL;
 const APPWRITE_DB_ID = import.meta.env.VITE_APPWRITE_DB_ID;
 const APPWRITE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
+const APPWRITE_CHAT_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CHAT_COLLECTION_ID;
+
 
 const Dashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [chatMessages, setChatMessages] = useState([
-        { id: 1, type: 'bot', content: 'Namaste Rani Devi! How can I help you grow your business today?', timestamp: '10:30 AM' },
-        { id: 2, type: 'user', content: 'What should I stock for Raksha Bandhan?', timestamp: '10:32 AM' },
-        { id: 3, type: 'bot', content: 'Based on local trends, I recommend stocking:\n• Rakhi sets (silk threads perform 40% better)\n• Sweets boxes (Kaju Katli & Rasgulla top sellers)\n• Gift wrapping materials\n• Brothers\' gifts under ₹500\n\nShall I help you create listings for these?', timestamp: '10:33 AM' }
-    ]);
+    // Remove static chat messages
+    const [chatMessages, setChatMessages] = useState([]);
+    const [allUserMessages, setAllUserMessages] = useState([]); // Add state for all user messages
     const [chatInput, setChatInput] = useState('');
+    const [currentSessionId, setCurrentSessionId] = useState(null); // Add state for current session ID
+    // Add state for language selection
+    const [language, setLanguage] = useState('hinglish'); // 'english', 'hindi', 'hinglish'
+    const [chatSessions, setChatSessions] = useState([]); // Add state for dynamic sessions
     const [notifications] = useState([
         { id: 1, text: 'Raksha Bandhan next week – prepare stock!', type: 'festival', time: '2 hours ago' },
         { id: 2, text: 'Your silk saree listing got 50 views today', type: 'success', time: '4 hours ago' },
@@ -102,6 +107,64 @@ const Dashboard = () => {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
+    // Helper function to calculate relative time
+    const getRelativeTime = (date) => {
+        const now = new Date();
+        const seconds = Math.round((now - date) / 1000);
+        const minutes = Math.round(seconds / 60);
+        const hours = Math.round(minutes / 60);
+        const days = Math.round(hours / 24);
+
+        if (seconds < 60) return "just now";
+        if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        if (days === 1) return `1 day ago`;
+        if (days < 30) return `${days} days ago`;
+
+        return new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    };
+
+    // Process raw chat messages into daily sessions
+    const processChatHistoryToSessions = (messages) => {
+        if (!messages || messages.length === 0) {
+            setChatSessions([]);
+            return;
+        }
+
+        // Group messages by session_id
+        const sessions = messages.reduce((acc, msg) => {
+            const sessionId = msg.session_id;
+            if (!acc[sessionId]) {
+                acc[sessionId] = {
+                    id: sessionId,
+                    // Use the first message's content for the preview
+                    preview: msg.content.substring(0, 40) + '...',
+                    // Use the timestamp of the *last* message in the session for sorting
+                    rawTimestamp: new Date(msg.rawCreatedAt).getTime(),
+                    messages: []
+                };
+            }
+            acc[sessionId].messages.push(msg);
+            // Update timestamp to the latest message in the session
+            acc[sessionId].rawTimestamp = Math.max(acc[sessionId].rawTimestamp, new Date(msg.rawCreatedAt).getTime());
+            return acc;
+        }, {});
+
+        // Sort sessions by the most recent message
+        const sortedSessions = Object.values(sessions)
+            .sort((a, b) => b.rawTimestamp - a.rawTimestamp)
+            .map(session => {
+                const lastMessageDate = new Date(session.rawTimestamp);
+                return {
+                    ...session,
+                    time: getRelativeTime(lastMessageDate),
+                    title: `Chat from ${lastMessageDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                };
+            });
+
+        setChatSessions(sortedSessions);
+    };
+
     useEffect(() => {
         // REMOVE this block entirely if you are not using Firebase Auth
         // const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -146,13 +209,13 @@ const Dashboard = () => {
         try {
             const res = await databases.listDocuments(
                 APPWRITE_DB_ID, // from .env
-                APPWRITE_COLLECTION_ID // from .env
-                // For Appwrite v10+, use: [Query.equal('user_id', currentUser.uid)]
+                APPWRITE_COLLECTION_ID, // from .env
+                [Query.equal('user_id', currentUser.uid)] // Use server-side query
             );
-            // For Appwrite v9, filter manually:
-            const userProducts = res.documents.filter(doc => doc.user_id === currentUser.uid);
-            setProducts(userProducts);
+            // The filtering is now done by the query, so we can use the documents directly
+            setProducts(res.documents);
         } catch (err) {
+            console.error("Failed to fetch user products:", err);
             setProducts([]);
         }
     };
@@ -173,30 +236,120 @@ const Dashboard = () => {
         }
     }, [activeTab, user]);
 
+
+    // Fetch chat history when user logs in or switches to the chat tab
+    const fetchChatHistory = async (currentUser) => {
+        if (!currentUser || !APPWRITE_CHAT_COLLECTION_ID) {
+            // If no user or collection, start with a greeting
+            setChatMessages([{
+                id: 'greeting-new-user',
+                type: 'bot',
+                content: `Namaste! How can I help you grow your business today?`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }]);
+            return;
+        }
+
+        try {
+            const res = await databases.listDocuments(
+                APPWRITE_DB_ID,
+                APPWRITE_CHAT_COLLECTION_ID,
+                [Query.equal('user_id', currentUser.uid), Query.orderAsc('$createdAt'), Query.limit(100)]
+            );
+
+            const userMessages = res.documents.map(doc => ({
+                id: doc.$id,
+                type: doc.type,
+                content: doc.content,
+                session_id: doc.session_id, // Include session_id
+                rawCreatedAt: doc.$createdAt, // Keep raw date for processing
+                timestamp: new Date(doc.$createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
+
+            setAllUserMessages(userMessages); // Store all messages for session management
+
+            if (userMessages.length === 0) {
+                // If no history, add dynamic greeting
+                setChatMessages([{
+                    id: 'greeting',
+                    type: 'bot',
+                    content: `Namaste ${getUserDisplayName(currentUser)}! How can I help you grow your business today?`,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }]);
+                processChatHistoryToSessions([]); // Clear sessions
+            } else {
+                setChatMessages(userMessages);
+                processChatHistoryToSessions(userMessages); // Process messages into sessions
+                // Set the current session to the most recent one
+                if (userMessages.length > 0) {
+                    setCurrentSessionId(userMessages[userMessages.length - 1].session_id);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to fetch chat history:", err);
+            // On error, fall back to a generic, friendly greeting without mentioning the error.
+            setChatMessages([{
+                id: 'greeting-error',
+                type: 'bot',
+                content: `Namaste ${getUserDisplayName(currentUser)}! How can I help you grow your business today?`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }]);
+        }
+    };
+
+    // Fetch chat history when the chat tab becomes active
+    useEffect(() => {
+        if (activeTab === 'ai-chat' && user) {
+            fetchChatHistory(user);
+        }
+    }, [activeTab, user]);
+
+
     const handleSendMessage = async () => {
         if (!chatInput.trim() || isLoading) return;
 
-        const newMessage = {
-            id: Date.now(),
-            type: 'user',
-            content: chatInput,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-
         const currentChatInput = chatInput;
         setChatInput('');
-        setChatMessages(prev => [...prev, newMessage]);
-        setIsLoading(true);
 
-        try {
-            const historyForBackend = chatMessages.slice(-5).map(msg => ({
+        // Determine the session ID for the new message
+        const sessionId = currentSessionId || ID.unique();
+        if (!currentSessionId) {
+            setCurrentSessionId(sessionId);
+        }
+
+        const userMessage = {
+            id: ID.unique(),
+            type: 'user',
+            content: currentChatInput,
+            session_id: sessionId,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            rawCreatedAt: new Date().toISOString(),
+        };
+
+        // History for backend should be from the state *before* adding the new message.
+        // And it should not include greeting messages.
+        const historyForBackend = chatMessages
+            .filter(m => !m.id.startsWith('greeting'))
+            .slice(-5)
+            .map(msg => ({
                 role: msg.type === 'bot' ? 'model' : 'user',
                 parts: [{ text: msg.content }]
             }));
+        
+        // Optimistically update UI
+        // If the current view is a greeting, replace it. Otherwise append.
+        const newViewMessages = chatMessages.some(m => m.id.startsWith('greeting'))
+            ? [userMessage]
+            : [...chatMessages, userMessage];
 
+        setChatMessages(newViewMessages);
+        setIsLoading(true);
+
+        try {
             const payload = {
                 history: historyForBackend,
-                current_query: currentChatInput
+                current_query: currentChatInput,
+                language: language // Pass selected language
             };
 
             // Connect to backend using backendURL from .env
@@ -214,12 +367,38 @@ const Dashboard = () => {
             const result = await response.json();
 
             const aiResponse = {
-                id: Date.now() + 1,
+                id: ID.unique(), // Use Appwrite ID for key
                 type: 'bot',
                 content: result.reply,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                session_id: sessionId,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                rawCreatedAt: new Date().toISOString(),
             };
             setChatMessages(prev => [...prev, aiResponse]);
+
+            // --- Persist and update global state ---
+            if (user && APPWRITE_CHAT_COLLECTION_ID) {
+                // Save user message
+                await databases.createDocument(
+                    APPWRITE_DB_ID,
+                    APPWRITE_CHAT_COLLECTION_ID,
+                    userMessage.id,
+                    { user_id: user.uid, type: 'user', content: userMessage.content, session_id: sessionId }
+                );
+                // Save AI response
+                await databases.createDocument(
+                    APPWRITE_DB_ID,
+                    APPWRITE_CHAT_COLLECTION_ID,
+                    aiResponse.id, // Use same ID for consistency
+                    { user_id: user.uid, type: 'bot', content: aiResponse.content, session_id: sessionId }
+                );
+                
+                // Update the global message list and re-process sessions
+                const newAllMessages = [...allUserMessages, userMessage, aiResponse];
+                setAllUserMessages(newAllMessages);
+                processChatHistoryToSessions(newAllMessages);
+            }
+            // ------------------------------------
 
         } catch (error) {
             console.error("Error fetching AI response from backend:", error);
@@ -237,6 +416,32 @@ const Dashboard = () => {
 
     const handleAskAI = () => {
         setActiveTab('ai-chat');
+    };
+
+    const handleNewChat = () => {
+        // Resets the chat to the initial greeting state
+        setCurrentSessionId(null); // This is the key change to start a new session
+        if (user) {
+            setChatMessages([{
+                id: 'greeting-new-chat',
+                type: 'bot',
+                content: `Namaste ${getUserDisplayName(user)}! How can I help you grow your business today?`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }]);
+        } else {
+            setChatMessages([{
+                id: 'greeting-generic',
+                type: 'bot',
+                content: `Namaste! How can I help you grow your business today?`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }]);
+        }
+    };
+
+    const handleSessionClick = (sessionId) => {
+        const sessionMessages = allUserMessages.filter(msg => msg.session_id === sessionId);
+        setChatMessages(sessionMessages);
+        setCurrentSessionId(sessionId);
     };
 
     const getUserDisplayName = (user) => {
@@ -569,19 +774,38 @@ const Dashboard = () => {
     const renderAIChat = () => (
         <div className="flex h-full">
             {/* Chat History Sidebar */}
-            <div className="w-80 bg-[#0f172a] border-r border-gray-200 p-4"> {/* Changed to darkest blue */}
-                <h3 className="text-lg font-semibold text-white mb-4">Chat History</h3>
+            <div className="w-80 bg-[#0f172a] border-r border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Chat History</h3>
+                    <button
+                        onClick={handleNewChat}
+                        className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors text-sm"
+                        title="Start New Chat"
+                    >
+                        <PlusCircle className="w-4 h-4" />
+                        New Chat
+                    </button>
+                </div>
                 <div className="space-y-2">
-                    {chatHistory.map((chat) => (
-                        <div
-                            key={chat.id}
-                            className="p-3 rounded-lg border border-gray-700 hover:bg-[#1e293b] cursor-pointer bg-[#1e293b] text-gray-100"
-                        >
-                            <h4 className="font-medium text-gray-100 text-sm">{chat.title}</h4>
-                            <p className="text-xs text-gray-400 mt-1">{chat.preview}</p>
-                            <span className="text-xs text-gray-500 mt-2 block">{chat.time}</span>
+                    {chatSessions.length > 0 ? (
+                        chatSessions.map((chat) => (
+                            <div
+                                key={chat.id}
+                                className="p-3 rounded-lg border border-gray-700 hover:bg-[#1e293b] cursor-pointer bg-[#1e293b] text-gray-100"
+                                onClick={() => handleSessionClick(chat.id)}
+                            >
+                                <h4 className="font-medium text-gray-100 text-sm truncate">{chat.preview}</h4>
+                                <p className="text-xs text-gray-400 mt-1">{chat.time}</p>
+                                <span className="text-xs text-gray-500 mt-2 block">{chat.title.replace('Chat from ', '')}</span>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center text-gray-500 text-sm py-8">
+                            No chat history found.
+                            <br />
+                            Start a new conversation!
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
 
@@ -611,17 +835,33 @@ const Dashboard = () => {
 
 
                 <div className="px-6 py-4 border-t border-gray-200">
-                    <h4 className="text-sm font-medium text-gray-400 mb-3">Smart Suggestions</h4>
-                    <div className="flex flex-wrap gap-2">
-                        {chatSuggestions.map((suggestion, index) => (
-                            <button
-                                key={index}
-                                onClick={() => setChatInput(suggestion)}
-                                className="px-3 py-1 bg-white text-blue-700 rounded-full text-sm hover:bg-blue-50 transition-colors"
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h4 className="text-sm font-medium text-gray-400 mb-3">Smart Suggestions</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {chatSuggestions.map((suggestion, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setChatInput(suggestion)}
+                                        className="px-3 py-1 bg-white text-blue-700 rounded-full text-sm hover:bg-blue-50 transition-colors"
+                                    >
+                                        {suggestion}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Globe className="w-5 h-5 text-gray-400" />
+                            <select
+                                value={language}
+                                onChange={(e) => setLanguage(e.target.value)}
+                                className="bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                             >
-                                {suggestion}
-                            </button>
-                        ))}
+                                <option value="hinglish">Hinglish</option>
+                                <option value="english">English</option>
+                                <option value="hindi">Hindi</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
