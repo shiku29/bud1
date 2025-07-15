@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     PlusCircle,
     MessageSquare,
@@ -6,7 +6,9 @@ import {
     Camera,
     Send,
     Globe,
-    Bot
+    Bot,
+    XCircle,
+    Menu
 } from 'lucide-react';
 import { databases, ID } from "../appwrite/client";
 import { Query } from "appwrite";
@@ -23,6 +25,13 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
     const [language, setLanguage] = useState('english');
     const [chatSessions, setChatSessions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [isListening, setIsListening] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    const fileInputRef = useRef(null);
+    const recognitionRef = useRef(null);
     
     const chatSuggestions = [
         "What to stock this month?",
@@ -131,15 +140,110 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
         }
     }, [user]);
 
+    // --- Speech Recognition Logic ---
+    useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            recognitionRef.current = new SpeechRecognition();
+            const recognition = recognitionRef.current;
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = language === 'hindi' ? 'hi-IN' : 'en-US';
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                setChatInput(finalTranscript + interimTranscript);
+            };
+            
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                setIsListening(false);
+            };
+
+            recognition.onend = () => {
+                setIsListening(false); // Always set listening to false when it ends
+            };
+        } else {
+            console.warn("Speech recognition not supported in this browser.");
+        }
+
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+        };
+    }, [language]);
+
+    const handleListen = () => {
+        const recognition = recognitionRef.current;
+        if (recognition) {
+            if (isListening) {
+                recognition.stop();
+                setIsListening(false);
+            } else {
+                setChatInput(''); // Clear input before starting
+                recognition.start();
+                setIsListening(true);
+            }
+        }
+    };
+
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setSelectedImage(null);
+        setImagePreview(null);
+        if(fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
     const handleSendMessage = async () => {
-        if (!chatInput.trim() || isLoading) return;
+        // Stop listening if a message is sent manually
+        if (isListening && recognitionRef.current) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+        }
+
+        if ((!chatInput.trim() && !selectedImage) || isLoading) return;
         const currentChatInput = chatInput;
+        const imageToSend = selectedImage; // Capture the image to send
+        
+        // --- Reset UI immediately ---
         setChatInput('');
+        setSelectedImage(null);
+        setImagePreview(null);
+        if(fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+        
         const sessionId = currentSessionId || ID.unique();
         if (!currentSessionId) setCurrentSessionId(sessionId);
 
         const userMessage = {
-            id: ID.unique(), type: 'user', content: currentChatInput, session_id: sessionId,
+            id: ID.unique(),
+            type: 'user',
+            content: currentChatInput,
+            image: imageToSend ? URL.createObjectURL(imageToSend) : null, // for local display
+            session_id: sessionId,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             rawCreatedAt: new Date().toISOString(),
         };
@@ -154,10 +258,19 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
         setIsLoading(true);
 
         try {
-            const payload = { history: historyForBackend, current_query: currentChatInput, language: language };
+            const formData = new FormData();
+            formData.append('current_query', currentChatInput);
+            formData.append('language', language);
+            formData.append('history_str', JSON.stringify(historyForBackend));
+            if (imageToSend) {
+                formData.append('image', imageToSend);
+            }
+
             const response = await fetch(`${backendURL}/api/chat`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                method: 'POST',
+                body: formData // No 'Content-Type' header, browser sets it for FormData
             });
+
             if (!response.ok) throw new Error((await response.json()).detail || `API call failed`);
             const result = await response.json();
             const aiResponse = {
@@ -203,7 +316,7 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
 
     return (
         <div className="flex h-full">
-            <div className="w-80 bg-[#0f172a] border-r border-gray-700 p-4 flex flex-col">
+            <div className={`bg-[#0f172a] border-r border-gray-700 flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${isSidebarOpen ? 'w-80 p-4' : 'w-0'}`}>
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-white">Chat History</h3>
                     <button onClick={handleNewChat} className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors text-sm" title="Start New Chat">
@@ -225,10 +338,17 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
             </div>
 
             <div className="flex-1 flex flex-col bg-gray-900">
+                <div className="p-3 border-b border-gray-700 flex items-center gap-4">
+                     <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1 text-gray-400 rounded-md hover:bg-gray-800 hover:text-white">
+                         <Menu className="w-6 h-6" />
+                     </button>
+                     <h3 className="text-lg font-semibold text-white">AI Copilot</h3>
+                </div>
                 <div className="flex-1 p-6 overflow-y-auto space-y-4">
                     {chatMessages.map((message) => (
                         <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'}`}>
+                                {message.image && <img src={message.image} alt="User upload" className="rounded-lg mb-2 max-h-48 w-full object-cover" />}
                                 <p className="text-sm whitespace-pre-line">{message.content}</p>
                                 <span className="text-xs opacity-75 mt-1 block">{message.timestamp}</span>
                             </div>
@@ -267,14 +387,35 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
                 </div>
 
                 <div className="p-6 border-t border-gray-700">
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 relative">
+                    <div className={`flex gap-3 ${imagePreview ? 'items-end' : 'items-center'}`}>
+                        <div className="flex-1">
+                            {imagePreview && (
+                                <div className="relative inline-block mb-2">
+                                    <img src={imagePreview} alt="Selected preview" className="h-20 w-20 object-cover rounded-lg border border-gray-600"/>
+                                    <button onClick={handleRemoveImage} className="absolute top-0 right-0 transform -translate-y-1/2 translate-x-1/2 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-0.5">
+                                        <XCircle className="w-5 h-5"/>
+                                    </button>
+                                </div>
+                            )}
                             <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                                 placeholder="Type your message..." className="w-full px-4 py-3 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-white"/>
                         </div>
-                        <button className="p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"><Mic className="w-5 h-5 text-gray-300" /></button>
-                        <button className="p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"><Camera className="w-5 h-5 text-gray-300" /></button>
-                        <button onClick={handleSendMessage} className="p-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"><Send className="w-5 h-5 text-white" /></button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageSelect}
+                            accept="image/*"
+                            className="hidden"
+                        />
+                        <button onClick={handleListen} className={`p-3 rounded-lg transition-colors ${isListening ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                            <Mic className="w-5 h-5 text-gray-300" />
+                        </button>
+                        <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors" disabled={isListening}>
+                            <Camera className="w-5 h-5 text-gray-300" />
+                        </button>
+                        <button onClick={handleSendMessage} className="p-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors" disabled={isListening}>
+                            <Send className="w-5 h-5 text-white" />
+                        </button>
                     </div>
                 </div>
             </div>

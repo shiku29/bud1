@@ -428,7 +428,7 @@ const Dashboard = () => {
         <div className="h-screen bg-[#1e293b] flex">
             <div className="w-64 bg-white border-r border-gray-200 sticky top-0 h-full overflow-y-auto">
                 <div className="p-4 border-b border-gray-200">
-                    <h1 className="text-xl font-bold text-gray-800">Bud AI</h1>
+                    <h1 className="text-xl font-bold text-gray-800">Saathi AI</h1>
                     <p className="text-sm text-gray-600">Your Business Copilot</p>
                     {!user ? (
                         <button className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700" onClick={() => navigate("/login")}>
