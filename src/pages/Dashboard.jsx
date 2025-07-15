@@ -46,6 +46,7 @@ const backendURL = import.meta.env.VITE_BACKEND_URL;
 const APPWRITE_DB_ID = import.meta.env.VITE_APPWRITE_DB_ID;
 const APPWRITE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
 const APPWRITE_CHAT_COLLECTION_ID = import.meta.env.VITE_APPWRITE_CHAT_COLLECTION_ID;
+const APPWRITE_PROFILES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILES_COLLECTION_ID;
 
 
 const Dashboard = () => {
@@ -212,11 +213,38 @@ const Dashboard = () => {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            console.log("Auth state changed. User:", currentUser);
             setUser(currentUser);
-            if (!currentUser) setProducts([]);
+            if (currentUser) {
+                checkUserProfile(currentUser);
+            } else {
+                setProducts([]);
+            }
         });
         return () => unsubscribe();
-    }, []);
+    }, [navigate]);
+
+    const checkUserProfile = async (currentUser) => {
+        if (!APPWRITE_PROFILES_COLLECTION_ID) {
+            console.error("Profile check skipped: VITE_APPWRITE_PROFILES_COLLECTION_ID is not set.");
+            return;
+        }
+        console.log(`Checking profile for user UID: ${currentUser.uid}`);
+        try {
+            await databases.getDocument(APPWRITE_DB_ID, APPWRITE_PROFILES_COLLECTION_ID, currentUser.uid);
+            console.log("User profile found. User is not new.");
+            // Profile exists, do nothing
+        } catch (error) {
+            // Appwrite throws an error if the document is not found, which is expected for new users.
+            console.error("Error checking user profile:", error);
+            if (error.code === 404) {
+                console.log("Profile not found (404). Redirecting to /welcome");
+                navigate('/welcome');
+            } else {
+                console.error("A different error occurred while checking profile. See details above.");
+            }
+        }
+    };
 
     // Fetch products for the logged-in user
     const fetchUserProducts = async (currentUser) => {
@@ -948,9 +976,9 @@ const Dashboard = () => {
             case 'orders':
                 return <OrdersReturnsPage />;
             case 'profile':
-                return user ? <Profile products={products} /> : <div className="p-8 text-center text-gray-500">Please login to view your profile.</div>;
+                return user ? <Profile user={user} /> : <div className="p-8 text-center text-gray-500">Please login to view your profile.</div>;
             case 'products':
-                return user ? <Products products={products} /> : <div className="p-8 text-center text-gray-500">Please login to view your products.</div>;
+                return user ? <Products user={user} /> : <div className="p-8 text-center text-gray-500">Please login to view your products.</div>;
             case 'addProduct':
                 return user ? (
                     <AddProduct
