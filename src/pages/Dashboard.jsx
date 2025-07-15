@@ -24,7 +24,8 @@ import {
     Eye,
     Calendar,
     Target,
-    Zap
+    Zap,
+    AlertTriangle // Add AlertTriangle for the summary
 } from 'lucide-react';
 import InventoryPlanner from './InventoryPlanner';
 import ProductListingGenerator from './ProductListingGenerator';
@@ -64,6 +65,13 @@ const Dashboard = () => {
     ]);
     const [user, setUser] = useState(null);
     const [products, setProducts] = useState([]);
+
+    const aiWeeklySummary = {
+        focus: "Focus on cotton pastel sets for Karva Chauth. High demand in your zone with 67% increase in searches. Promote your top listings and restock light fabrics immediately. Avoid wool items — return rate spiking 42% due to heat wave in North India.",
+        opportunity: "Cotton kurtis, palazzo sets, light dupattas",
+        caution: "Heavy fabrics, wool items, dark colors",
+        action: "Boost cotton inventory, update size charts"
+    };
 
     const sidebarItems = [
         { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -491,6 +499,41 @@ const Dashboard = () => {
                 </div>
             </div>
 
+            {/* AI Weekly Summary */}
+            <div className="bg-gradient-to-r from-purple-600 to-blue-500 rounded-2xl p-6 text-white shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                    <Zap className="w-6 h-6" />
+                    <h3 className="text-xl font-bold">AI Weekly Summary</h3>
+                </div>
+                <div className="bg-white/20 rounded-lg p-4 mb-4">
+                    <h4 className="font-semibold mb-2">📊 This Week's Focus:</h4>
+                    <p className="text-sm">{aiWeeklySummary.focus}</p>
+                </div>
+                <div className="grid md:grid-cols-3 gap-4 text-sm">
+                    <div className="bg-white/20 rounded-lg p-4">
+                        <div className="flex items-center gap-2 font-semibold mb-2">
+                            <TrendingUp className="w-5 h-5 text-green-300" />
+                            <span>Opportunity</span>
+                        </div>
+                        <p>{aiWeeklySummary.opportunity}</p>
+                    </div>
+                    <div className="bg-white/20 rounded-lg p-4">
+                        <div className="flex items-center gap-2 font-semibold mb-2">
+                            <AlertTriangle className="w-5 h-5 text-yellow-300" />
+                            <span>Caution</span>
+                        </div>
+                        <p>{aiWeeklySummary.caution}</p>
+                    </div>
+                    <div className="bg-white/20 rounded-lg p-4">
+                        <div className="flex items-center gap-2 font-semibold mb-2">
+                            <Target className="w-5 h-5 text-red-300" />
+                            <span>Action</span>
+                        </div>
+                        <p>{aiWeeklySummary.action}</p>
+                    </div>
+                </div>
+            </div>
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpiCards.map((card, index) => (
@@ -747,27 +790,6 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
-                <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-sm">Your "Traditional Silk Saree" listing got 15 new views</span>
-                        <span className="text-xs text-gray-500 ml-auto">2 hours ago</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-sm">AI suggested 3 new products for your inventory</span>
-                        <span className="text-xs text-gray-500 ml-auto">5 hours ago</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
-                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-sm">Festival season preparation reminder</span>
-                        <span className="text-xs text-gray-500 ml-auto">1 day ago</span>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 
