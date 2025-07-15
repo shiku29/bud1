@@ -79,7 +79,7 @@ class IncomingChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     history: List[IncomingChatMessage]
     current_query: str
-    language: str = "hinglish" # Add language field with a default
+    language: str = "english" # Add language field with a default
 
 class ChatResponse(BaseModel):
     reply: str
@@ -102,12 +102,13 @@ async def chat_with_copilot_ai(request: ChatRequest):
         # print(f"--- WEATHER ---\n{current_season, current_weather}\n--------------------------") # Debug print
 
 
-        language_instruction = "You must respond in Hinglish (a mix of Hindi and English)."
-        if request.language:
-            if request.language.lower() == 'hindi':
-                language_instruction = "You must respond only in Hindi."
-            elif request.language.lower() == 'english':
-                language_instruction = "You must respond only in English."
+        if request.language.lower() == 'hindi':
+            language_instruction = "You must respond only in Hindi."
+        elif request.language.lower() == 'hinglish':
+            language_instruction = "You must respond in Hinglish (a mix of Hindi and English)."
+        else: # Default to English
+            language_instruction = "You must respond only in English."
+
 
         system_prompt = f"""
         You are 'Seller Saathi', a friendly and expert AI assistant for Meesho sellers in India.

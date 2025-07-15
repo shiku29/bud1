@@ -244,6 +244,155 @@ const Dashboard = () => {
                     ))}
                 </div>
             </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Product Details Card */}
+                <div className="bg-white p-6 rounded-lg border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-semibold text-gray-800">PRODUCT DETAILS</h3>
+                        <span className="text-sm text-gray-500">This Month</span>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center"><span>Low Stock Items</span><span className="font-bold text-red-500">9</span></div>
+                        <div className="flex justify-between items-center"><span>All Item Groups</span><span className="font-bold">2</span></div>
+                        <div className="flex justify-between items-center"><span>All Items</span><span className="font-bold">21</span></div>
+                        <div className="flex justify-between items-center"><span>Unconfirmed Items</span><span className="font-bold">0</span></div>
+                    </div>
+                </div>
+
+                {/* Top Selling Items Card */}
+                <div className="bg-white p-6 rounded-lg border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-semibold text-gray-800">TOP SELLING ITEMS</h3>
+                        <span className="text-sm text-gray-500">This Month</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                        <div>
+                            <div className="bg-gray-100 rounded-lg p-3 mb-2 inline-block"><Package/></div>
+                            <p className="font-semibold">silk saree</p><p className="text-sm text-gray-500">52 pcs</p>
+                        </div>
+                        <div>
+                            <div className="bg-gray-100 rounded-lg p-3 mb-2 inline-block"><Package/></div>
+                            <p className="font-semibold">Multi-color Bedsheet</p><p className="text-sm text-gray-500">41 pcs</p>
+                        </div>
+                        <div>
+                            <div className="bg-gray-100 rounded-lg p-3 mb-2 inline-block"><Package/></div>
+                            <p className="font-semibold">Cotton kurti</p><p className="text-sm text-gray-500">13 pcs</p>
+                        </div>
+                        <div>
+                            <div className="bg-gray-100 rounded-lg p-3 mb-2 inline-block"><Package/></div>
+                            <p className="font-semibold">Dupatta</p><p className="text-sm text-gray-500">14 pcs</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Purchase Order Card */}
+                <div className="bg-white p-6 rounded-lg border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-semibold text-gray-800">PURCHASE ORDER</h3>
+                        <span className="text-sm text-gray-500">This Month</span>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-blue-500 mr-3"></span>
+                            <div className="flex-1">
+                                <p className="font-semibold">PO-2024-001</p>
+                                <p className="text-sm text-gray-500">Silk Saree Collection</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold">₹45,000</p>
+                                <p className="text-sm text-green-500">Delivered</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-orange-500 mr-3"></span>
+                            <div className="flex-1">
+                                <p className="font-semibold">PO-2024-002</p>
+                                <p className="text-sm text-gray-500">Traditional Jewelry</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold">₹28,500</p>
+                                <p className="text-sm text-orange-500">Pending</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-purple-500 mr-3"></span>
+                            <div className="flex-1">
+                                <p className="font-semibold">PO-2024-003</p>
+                                <p className="text-sm text-gray-500">Festival Decorations</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold">₹12,200</p>
+                                <p className="text-sm text-purple-500">Processing</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="pt-4 mt-4 border-t border-gray-200 flex justify-between items-center">
+                        <span className="font-semibold">Total Orders: 3</span>
+                        <span className="font-bold text-lg">₹85,700</span>
+                    </div>
+                </div>
+
+                {/* Sales Order Card */}
+                <div className="bg-white p-6 rounded-lg border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-semibold text-gray-800">SALES ORDER</h3>
+                        <span className="text-sm text-gray-500">This Month</span>
+                    </div>
+                    <div className="space-y-4">
+                         <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-green-500 mr-3"></span>
+                            <div className="flex-1">
+                                <p className="font-semibold">SO-2024-015</p>
+                                <p className="text-sm text-gray-500">Banarasi Silk Saree</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold">₹8,500</p>
+                                <p className="text-sm text-green-500">Completed</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-blue-500 mr-3"></span>
+                            <div className="flex-1">
+                                <p className="font-semibold">SO-2024-016</p>
+                                <p className="text-sm text-gray-500">Gold Plated Earrings</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold">₹2,200</p>
+                                <p className="text-sm text-blue-500">Shipped</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-yellow-500 mr-3"></span>
+                            <div className="flex-1">
+                                <p className="font-semibold">SO-2024-017</p>
+                                <p className="text-sm text-gray-500">Rakhi Gift Set</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold">₹1,800</p>
+                                <p className="text-sm text-yellow-500">Confirmed</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-pink-500 mr-3"></span>
+                            <div className="flex-1">
+                                <p className="font-semibold">SO-2024-018</p>
+                                <p className="text-sm text-gray-500">Traditional Kurta Set</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold">₹3,500</p>
+                                <p className="text-sm text-pink-500">New</p>
+                            </div>
+                        </div>
+                    </div>
+                     <div className="pt-4 mt-4 border-t border-gray-200 flex justify-between items-center">
+                        <span className="font-semibold">Total Orders: 4</span>
+                        <span className="font-bold text-lg">₹16,000</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 

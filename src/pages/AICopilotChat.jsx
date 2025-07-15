@@ -20,7 +20,7 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
     const [allUserMessages, setAllUserMessages] = useState([]);
     const [chatInput, setChatInput] = useState('');
     const [currentSessionId, setCurrentSessionId] = useState(null);
-    const [language, setLanguage] = useState('hinglish');
+    const [language, setLanguage] = useState('english');
     const [chatSessions, setChatSessions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     
@@ -81,47 +81,47 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
     };
 
     const fetchChatHistory = async (currentUser) => {
-        if (!currentUser || !APPWRITE_CHAT_COLLECTION_ID) {
+        const showGreeting = (userForGreeting) => {
+            setCurrentSessionId(null);
             setChatMessages([{
-                id: 'greeting-new-user', type: 'bot', content: `Namaste! How can I help you grow your business today?`,
+                id: 'greeting-initial',
+                type: 'bot',
+                content: `Namaste ${userForGreeting ? getUserDisplayName(userForGreeting) : ''}! How can I help you grow your business today?`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }]);
+        };
+
+        if (!currentUser || !APPWRITE_CHAT_COLLECTION_ID) {
+            showGreeting(currentUser);
             return;
         }
 
+        showGreeting(currentUser); // Always show greeting on load
+
         try {
             const res = await databases.listDocuments(
-                APPWRITE_DB_ID, APPWRITE_CHAT_COLLECTION_ID,
+                APPWRITE_DB_ID,
+                APPWRITE_CHAT_COLLECTION_ID,
                 [Query.equal('user_id', currentUser.uid), Query.orderAsc('$createdAt'), Query.limit(100)]
             );
 
             const userMessages = res.documents.map(doc => ({
-                id: doc.$id, type: doc.type, content: doc.content, session_id: doc.session_id,
+                id: doc.$id,
+                type: doc.type,
+                content: doc.content,
+                session_id: doc.session_id,
                 rawCreatedAt: doc.$createdAt,
                 timestamp: new Date(doc.$createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }));
 
             setAllUserMessages(userMessages);
+            processChatHistoryToSessions(userMessages); // Process all messages for the sidebar
 
-            if (userMessages.length === 0) {
-                setChatMessages([{
-                    id: 'greeting', type: 'bot', content: `Namaste ${getUserDisplayName(currentUser)}! How can I help you grow your business today?`,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                }]);
-                processChatHistoryToSessions([]);
-            } else {
-                setChatMessages(userMessages);
-                processChatHistoryToSessions(userMessages);
-                if (userMessages.length > 0) {
-                    setCurrentSessionId(userMessages[userMessages.length - 1].session_id);
-                }
-            }
         } catch (err) {
             console.error("Failed to fetch chat history:", err);
-            setChatMessages([{
-                id: 'greeting-error', type: 'bot', content: `Namaste ${getUserDisplayName(currentUser)}! How can I help you grow your business today?`,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }]);
+            // Greeting is already set, just clear history from sidebar on error
+            setChatSessions([]);
+            setAllUserMessages([]);
         }
     };
 
@@ -282,4 +282,4 @@ const AICopilotChat = ({ user, getUserDisplayName }) => {
     );
 };
 
-export default AICopilotChat; 
+export default AICopilotChat;
