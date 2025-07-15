@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Login from "./auth/Login"; // adjust path as needed
 import Products from "./pages/Products";
+import EditProduct from "./pages/EditProduct"; // Import EditProduct
 import { auth } from "./auth/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -20,6 +21,7 @@ function App() {
         <Route path="/" element={<Dashboard user={user} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/products" element={<Products user={user} />} />
+        <Route path="/products/edit/:id" element={<EditProduct user={user} />} /> {/* Add this route */}
       </Routes>
     </div>
   );

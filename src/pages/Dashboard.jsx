@@ -34,7 +34,7 @@ import OrdersReturnsPage from './OrdersReturnsPage';
 import Profile from './Profile';
 import Products from "./Products";
 import AddProduct from "./AddProduct";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../auth/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { databases, ID } from "../appwrite/client"; // Add ID to import
@@ -65,6 +65,7 @@ const Dashboard = () => {
     ]);
     const [user, setUser] = useState(null);
     const [products, setProducts] = useState([]);
+    const location = useLocation();
 
     const aiWeeklySummary = {
         focus: "Focus on cotton pastel sets for Karva Chauth. High demand in your zone with 67% increase in searches. Promote your top listings and restock light fabrics immediately. Avoid wool items — return rate spiking 42% due to heat wave in North India.",
@@ -114,6 +115,15 @@ const Dashboard = () => {
 
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('view') === 'addProduct') {
+            setActiveTab('addProduct');
+            // Clean the URL to avoid keeping the view state on refresh
+            navigate('/', { replace: true });
+        }
+    }, [location, navigate]);
 
     // Helper function to calculate relative time
     const getRelativeTime = (date) => {
@@ -462,17 +472,21 @@ const Dashboard = () => {
 
     // Update quickActions to handle Add Product navigation
     const handleQuickAction = (actionLabel) => {
-        if (actionLabel === "Add Product") {
-            setActiveTab("add-product");
-        } else if (actionLabel === "View your products") {
-            navigate("/products"); // <-- open new page
+        if (actionLabel === 'Add Product') {
+            setActiveTab('addProduct');
+        } else if (actionLabel === 'View your products') {
+            navigate('/products');
+        } else if (actionLabel === 'View Local Trends') {
+            setActiveTab('trends');
         }
-        // You can handle other quick actions here if needed
     };
 
-    // Pass this to AddProduct
+    const handleBackToDashboard = () => {
+        setActiveTab('dashboard');
+    };
+
     const handleAddProduct = (product) => {
-        setProducts(prev => [...prev, product]);
+        setProducts((prev) => [product, ...prev]);
     };
 
     const renderDashboard = () => (
@@ -937,12 +951,13 @@ const Dashboard = () => {
                 return user ? <Profile products={products} /> : <div className="p-8 text-center text-gray-500">Please login to view your profile.</div>;
             case 'products':
                 return user ? <Products products={products} /> : <div className="p-8 text-center text-gray-500">Please login to view your products.</div>;
-            case 'add-product':
+            case 'addProduct':
                 return user ? (
                     <AddProduct
                         onAddProduct={handleAddProduct}
                         user={user}
                         setProducts={setProducts}
+                        onBack={handleBackToDashboard}
                     />
                 ) : (
                     <div className="p-8 text-center text-gray-500">Please login to add products.</div>
