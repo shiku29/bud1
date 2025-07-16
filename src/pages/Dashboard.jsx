@@ -16,7 +16,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { databases, ID } from "../appwrite/client";
 import { Query } from "appwrite";
 
-const backendURL = import.meta.env.VITE_BACKEND_URL;
+const backendURL = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, '');
 const APPWRITE_DB_ID = import.meta.env.VITE_APPWRITE_DB_ID;
 const APPWRITE_COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
 const APPWRITE_PROFILES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILES_COLLECTION_ID;
