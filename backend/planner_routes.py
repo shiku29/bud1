@@ -12,7 +12,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 
 # --- Custom Utility Import ---
-from backend.utils import get_upcoming_festivals_for_prompt, get_upcoming_festivals_for_chat
+from backend.local_festivals import get_upcoming_festivals_for_prompt
 
 
 # --- Pydantic Models for Structured JSON Response ---
