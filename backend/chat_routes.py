@@ -10,7 +10,7 @@ from PIL import Image
 import io
 
 # --- Custom Utility Import ---
-from utils import get_upcoming_festivals_for_chat
+from backend.utils import get_upcoming_festivals_for_chat
 
 # --- LangChain Imports ---
 from langchain_groq import ChatGroq
