@@ -1,6 +1,7 @@
 # uvicorn main:app --reload (to run backend from backend folder)
 from fastapi import FastAPI
-from cors_config import setup_cors
+from backend.cors_config import setup_cors
+
 # Import the routers from your feature-specific files
 from chat_routes import router as chat_router
 from planner_routes import router as planner_router
