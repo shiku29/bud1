@@ -5,7 +5,7 @@ from backend.cors_config import setup_cors
 
 # Corrected imports with full module path
 from backend.chat_routes import router as chat_router
-from backend.planner_routes import router as planner_router
+from planner_routes import router as planner_router
 from backend.trends_routes import router as trends_router
 from backend.product_listing_routes import router as product_listing_router
 
