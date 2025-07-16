@@ -8,13 +8,14 @@ const TrendsInsightsPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [trendsData, setTrendsData] = useState(null);
-    const backendURL = import.meta.env.VITE_BACKEND_URL;
+    const backendURL = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, '');
 
     const fetchData = async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${backendURL}/api/trends/full-trends-report?location=${selectedRegion}&category=${selectedCategory}`);
+            const response = await fetch(`${backendURL}/api/planner/full-report?location=Delhi`);
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ detail: 'Network response was not ok' }));
                 throw new Error(errorData.detail || 'Failed to fetch data');
