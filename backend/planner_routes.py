@@ -12,7 +12,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 
 # --- Custom Utility Import ---
-from utils import get_upcoming_festivals_for_chat
+from backend.utils import get_upcoming_festivals_for_prompt, get_upcoming_festivals_for_chat
+
 
 # --- Pydantic Models for Structured JSON Response ---
 # These models are now enhanced with detailed descriptions to match the frontend component's needs.
