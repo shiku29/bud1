@@ -1,7 +1,9 @@
 import json
 import calendar
 from datetime import datetime, timedelta
-from indian_festivals.festival import IndianFestivals
+
+from local_festivals import IndianFestivals
+
 
 def _get_raw_upcoming_festivals():
     """
