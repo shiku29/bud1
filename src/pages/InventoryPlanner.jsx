@@ -22,7 +22,7 @@ const InventoryPlanner = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedFestival, setSelectedFestival] = useState(null);
-    const backendURL = import.meta.env.VITE_BACKEND_URL;
+   const backendURL = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, '');
 
     useEffect(() => {
         const fetchPlannerData = async () => {
@@ -31,6 +31,7 @@ const InventoryPlanner = () => {
             try {
                 // The URL points to your new backend endpoint
                 const response = await fetch(`${backendURL}/api/planner/full-report?location=Delhi`);
+
                 
                 if (!response.ok) {
                     const errorData = await response.json();
