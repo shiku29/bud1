@@ -24,7 +24,7 @@ const ProductListingGenerator = () => {
     const [copiedField, setCopiedField] = useState(null);
     const [translations, setTranslations] = useState({});
     const [translatingLanguage, setTranslatingLanguage] = useState(null);
-    const backendURL = import.meta.env.VITE_BACKEND_URL;
+    const backendURL = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, '');
 
     const fileInputRef = useRef(null);
     const langDropdownRef = useRef(null);
